@@ -11,10 +11,10 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 
 	//Bit information about the plugin
 	//Please fill this in!!
-	info.BotName = "BotNameTEST";
-	info.Student_FirstName = "Foo";
-	info.Student_LastName = "Bar";
-	info.Student_Class = "2DAEx";
+	info.BotName = "myBot";
+	info.Student_FirstName = "Jitse";
+	info.Student_LastName = "Verstraete";
+	info.Student_Class = "2DAE07";
 }
 
 //Called only once
@@ -81,6 +81,20 @@ void Plugin::Update(float dt)
 	{
 		m_CanRun = false;
 	}
+
+	//DEBUG RENDERING
+
+	//world border
+	Elite::Vector2 center{ m_pInterface->World_GetInfo().Center };
+	Elite::Vector2 bounds{ m_pInterface->World_GetInfo().Dimensions };
+	Elite::Vector2 points[4]{
+	Elite::Vector2(center - bounds / 2),
+	Elite::Vector2(center.x - bounds.x / 2, center.y + bounds.y / 2),
+	Elite::Vector2(center + bounds / 2),
+	Elite::Vector2(center.x + bounds.x / 2, center.y - bounds.y / 2),
+	};
+
+	m_pInterface->Draw_Polygon(points, 4, { 1.f, 0.f, 0.f });
 }
 
 //Update
@@ -92,6 +106,8 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 
 	//Use the Interface (IAssignmentInterface) to 'interface' with the AI_Framework
 	auto agentInfo = m_pInterface->Agent_GetInfo();
+
+
 
 
 	auto nextTargetPos = m_Target; //To start you can use the mouse position as guidance

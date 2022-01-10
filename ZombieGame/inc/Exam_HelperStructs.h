@@ -4,7 +4,7 @@ struct SteeringPlugin_Output
 {
 	Elite::Vector2 LinearVelocity = { 0.f,0.f };
 	float AngularVelocity = 0.f;
-	bool AutoOrient = true;
+	bool AutoOrient = false;
 	bool RunMode = false;
 };
 
