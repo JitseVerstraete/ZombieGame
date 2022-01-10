@@ -1,27 +1,21 @@
-//Precompiled Header [ALWAYS ON TOP IN CPP]
 #include "stdafx.h"
+//Precompiled Header [ALWAYS ON TOP IN CPP]
 
 //Includes
 #include "SteeringBehaviors.h"
-#include "../SteeringAgent.h"
-#include "../Obstacle.h"
-#include "framework\EliteMath\EMatrix2x3.h"
+
+
+
 
 //SEEK
 //****
-SteeringOutput Seek::CalculateSteering(float deltaT, SteeringAgent* pAgent)
+SteeringPlugin_Output Seek::CalculateSteering(float deltaT, const AgentInfo& agentInfo)
 {
-	SteeringOutput steering = {};
+	SteeringPlugin_Output steering = {};
 
-	steering.LinearVelocity = m_Target.Position - pAgent->GetPosition();
+	steering.LinearVelocity = m_TargetInfo.Location - agentInfo.Position;
 	steering.LinearVelocity.Normalize();
-	steering.LinearVelocity *= pAgent->GetMaxLinearSpeed();
-
-
-	if (pAgent->CanRenderBehavior())
-	{
-		//DEBUGRENDERER2D->DrawDirection(pAgent->GetPosition(), steering.LinearVelocity, 5.f, Elite::Color{ 0.f,1.f,0.f,1.f });
-	}
+	steering.LinearVelocity *= agentInfo.MaxLinearSpeed;
 
 
 	return steering;
@@ -29,9 +23,9 @@ SteeringOutput Seek::CalculateSteering(float deltaT, SteeringAgent* pAgent)
 
 //FLEE
 //****
-SteeringOutput Flee::CalculateSteering(float deltaT, SteeringAgent* pAgent)
+SteeringPlugin_Output Flee::CalculateSteering(float deltaT, const AgentInfo& agentInfo)
 {
-	SteeringOutput steering = { Seek::CalculateSteering(deltaT, pAgent) };
+	SteeringPlugin_Output steering = { Seek::CalculateSteering(deltaT, agentInfo) };
 	steering.LinearVelocity = -steering.LinearVelocity;
 	return steering;
 }
@@ -49,11 +43,11 @@ void Arrive::SetTargetRadius(float targetRadius)
 
 //ARRIVE
 //******
-SteeringOutput Arrive::CalculateSteering(float deltaT, SteeringAgent* pAgent)
+SteeringPlugin_Output Arrive::CalculateSteering(float deltaT, const AgentInfo& agentInfo)
 {
-	SteeringOutput steering{ Seek::CalculateSteering(deltaT, pAgent) };
+	SteeringPlugin_Output steering{ Seek::CalculateSteering(deltaT, agentInfo) };
 
-	Elite::Vector2 toTarget{ m_Target.Position - pAgent->GetPosition() };
+	Elite::Vector2 toTarget{ m_TargetInfo.Location - agentInfo.Position };
 	float distance{ toTarget.Magnitude() };
 
 	if (distance < m_TargetRadius)
@@ -76,30 +70,31 @@ SteeringOutput Arrive::CalculateSteering(float deltaT, SteeringAgent* pAgent)
 
 //FACE
 //****
-SteeringOutput Face::CalculateSteering(float deltaT, SteeringAgent* pAgent)
+SteeringPlugin_Output Face::CalculateSteering(float deltaT, const AgentInfo& agentInfo)
 {
-	pAgent->SetAutoOrient(false);
-	SteeringOutput steering{};
+	SteeringPlugin_Output steering{};
 
-	Elite::Vector2 toTarget{ m_Target.Position - pAgent->GetPosition() };
+	Elite::Vector2 toTarget{ m_TargetInfo.Location - agentInfo.Position };
 
 
-	float currentAngle{ pAgent->GetOrientation() - float(M_PI) / 2 };
+	float currentAngle{ agentInfo.Orientation - float(M_PI) / 2 };
 	Elite::Vector2 forward{ cos(currentAngle), sin(currentAngle) };
 
 	steering.AngularVelocity = Elite::AngleBetween(forward, toTarget) * 2;
-
-
+	
 	return steering;
 }
 
-SteeringOutput Wander::CalculateSteering(float deltaT, SteeringAgent* pAgent)
+SteeringPlugin_Output Wander::CalculateSteering(float deltaT, const AgentInfo& agentInfo)
 {
+	Elite::Vector2 agentDirection = agentInfo.LinearVelocity;
 
-	if ((pAgent->GetDirection().x < 0.01f && pAgent->GetDirection().x > -0.01f) && (pAgent->GetDirection().y < 0.01f && pAgent->GetDirection().y > -0.01f))
+	
+	if ((agentDirection.x < 0.01f && agentDirection.x > -0.01f) && (agentDirection.y < 0.01f && agentDirection.y > -0.01f))
 	{
-		pAgent->SetLinearVelocity({ 0.f,1.f });
+		agentDirection  = { 0.f,1.f };
 	}
+	
 
 
 	//add random offset to angle
@@ -108,31 +103,25 @@ SteeringOutput Wander::CalculateSteering(float deltaT, SteeringAgent* pAgent)
 
 	//calculate target point on circle
 	Elite::Vector2 targetPoint{};
-	Elite::Vector2 dir{ pAgent->GetDirection() };
+	Elite::Vector2 dir{ agentDirection };
 	Elite::Vector2 perpDir{ dir.y, -dir.x };
 
 
-	targetPoint = pAgent->GetPosition() +
+	targetPoint = agentInfo.Position +
 		m_WanderDistance * dir +
 		sin(m_currentAngle) * dir * m_WanderRadius +
 		cos(m_currentAngle) * perpDir * m_WanderRadius;
 
-	
-	Elite::Vector2 toTarget{ targetPoint - pAgent->GetPosition() };
 
-	SetTarget(TargetData(targetPoint));
+	Elite::Vector2 toTarget{ targetPoint - agentInfo.Position };
+
+	EnemyInfo toSet{};
+	toSet.Location = targetPoint;
+	m_TargetInfo.Location = targetPoint;
 
 
 
-	SteeringOutput steering{ Seek::CalculateSteering(deltaT, pAgent) };
-
-	if (pAgent->CanRenderBehavior())
-	{
-		DEBUGRENDERER2D->DrawCircle(pAgent->GetPosition() + dir * m_WanderDistance, m_WanderRadius, { 1.f, 0.f, 0.f, 1.f }, 0);
-		DEBUGRENDERER2D->DrawDirection(pAgent->GetPosition(), toTarget, toTarget.Magnitude(), { 1.f, 0.f, 0.f, 1.f }, 0);
-		DEBUGRENDERER2D->DrawPoint(targetPoint, 5, { 1.f, 0.f, 0.f, 1.f }, 0);
-	}
-
+	SteeringPlugin_Output steering{ Seek::CalculateSteering(deltaT, agentInfo) };
 
 
 	return steering;
@@ -153,42 +142,37 @@ void Wander::SetMaxAngleChange(float delta)
 	m_MaxAngleChange = delta;
 }
 
-SteeringOutput Pursuit::CalculateSteering(float deltaT, SteeringAgent* pAgent)
+SteeringPlugin_Output Pursuit::CalculateSteering(float deltaT, const AgentInfo& agentInfo)
 {
-	SteeringOutput steering = {};
+	SteeringPlugin_Output steering = {};
 
-	Elite::Vector2 interceptionPoint{(m_Target.Position + (m_Target.LinearVelocity * deltaT * 10.f)) };
+	Elite::Vector2 interceptionPoint{(m_TargetInfo.Location + (m_TargetInfo.LinearVelocity * deltaT * 10.f)) };
 
-	steering.LinearVelocity = interceptionPoint - pAgent->GetPosition();
+	steering.LinearVelocity = interceptionPoint - agentInfo.Position;
 	steering.LinearVelocity.Normalize();
-	steering.LinearVelocity *= pAgent->GetMaxLinearSpeed();
+	steering.LinearVelocity *= agentInfo.MaxLinearSpeed;
 
 	return steering;
 }
 
-SteeringOutput Evade::CalculateSteering(float deltaT, SteeringAgent* pAgent)
+SteeringPlugin_Output Evade::CalculateSteering(float deltaT, const AgentInfo& agentInfo)
 {
 
 
-	float distanceToTarget = Elite::Distance(pAgent->GetPosition(), m_Target.Position);
+	float distanceToTarget = Elite::Distance(agentInfo.Position , m_TargetInfo.Location);
 	if (distanceToTarget > m_FleeRadius)
 	{
-		return SteeringOutput(Elite::ZeroVector2, 0, false);
+		return SteeringPlugin_Output();
 
 	}
 
-	DEBUGRENDERER2D->DrawPoint(m_Target.Position + m_Target.LinearVelocity * deltaT, 5.f, { 1,1,0 }, 0.f);
+	//DEBUGRENDERER2D->DrawPoint(m_Target.Position + m_Target.LinearVelocity * deltaT, 5.f, { 1,1,0 }, 0.f);
 	 
 
-	SteeringOutput steering{ Pursuit::CalculateSteering(deltaT, pAgent) };
+	SteeringPlugin_Output steering{ Pursuit::CalculateSteering(deltaT, agentInfo) };
 	steering.LinearVelocity = -steering.LinearVelocity;
 
-	if (pAgent->CanRenderBehavior())
-	{
-		DEBUGRENDERER2D->DrawCircle(pAgent->GetPosition(), m_FleeRadius, { 0,1,0 }, 0);
-		DEBUGRENDERER2D->DrawDirection(pAgent->GetPosition(), steering.LinearVelocity, 5.f, { 1,1,0 }, 0.f);
 
-	}
 	return steering;
 }
 

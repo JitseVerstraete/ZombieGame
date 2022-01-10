@@ -1,6 +1,7 @@
 #pragma once
 #include "IExamPlugin.h"
 #include "Exam_HelperStructs.h"
+#include "Steering\SteeringBehaviors.h"
 
 class IBaseInterface;
 class IExamInterface;
@@ -26,6 +27,11 @@ private:
 	IExamInterface* m_pInterface = nullptr;
 	vector<HouseInfo> GetHousesInFOV() const;
 	vector<EntityInfo> GetEntitiesInFOV() const;
+
+
+	//behaviors
+	Wander* m_pWanderBehavior = nullptr;
+	
 
 	Elite::Vector2 m_Target = {};
 	bool m_CanRun = false; //Demo purpose

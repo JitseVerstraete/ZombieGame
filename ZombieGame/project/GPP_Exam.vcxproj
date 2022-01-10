@@ -73,7 +73,7 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>$(SolutionDir)..\inc\;$(IncludePath)</IncludePath>
+    <IncludePath>$(SolutionDir)..\inc\;$(SolutionDir);$(IncludePath)</IncludePath>
     <LibraryPath>$(SolutionDir)..\lib\;$(LibraryPath)</LibraryPath>
     <OutDir>$(SolutionDir)..\_DEMO_DEBUG\</OutDir>
     <TargetName>GPP_Plugin_d</TargetName>
@@ -184,6 +184,7 @@
   <ItemGroup>
     <ClInclude Include="Plugin.h" />
     <ClInclude Include="stdafx.h" />
+    <ClInclude Include="Steering\SteeringBehaviors.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Plugin.cpp" />
@@ -191,6 +192,10 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="Steering\SteeringBehaviors.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="ClassDiagram.cd" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -205,6 +205,13 @@ namespace Elite
 
 		return atan2f(velocity.x, -velocity.y);
 	}
+
+	/*! Get Angle Between 2 vectors*/
+	inline float AngleBetween(const Elite::Vector2& v1, const Elite::Vector2& v2) {
+		float x = v1.Dot(v2);
+		float y = v1.Cross(v2);
+		return atan2(y, x);
+	}
 #pragma endregion //ExtraFunctions
 }
 #endif

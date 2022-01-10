@@ -21,12 +21,15 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 void Plugin::DllInit()
 {
 	//Called when the plugin is loaded
+	m_pWanderBehavior = new Wander();
+	
 }
 
 //Called only once
 void Plugin::DllShutdown()
 {
 	//Called when the plugin gets unloaded
+	SAFE_DELETE(m_pWanderBehavior);
 }
 
 //Called only once, during initialization
@@ -107,9 +110,13 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 	//Use the Interface (IAssignmentInterface) to 'interface' with the AI_Framework
 	auto agentInfo = m_pInterface->Agent_GetInfo();
 
+	steering =  m_pWanderBehavior->CalculateSteering(dt, agentInfo);
+	steering.AutoOrient = false;
+	steering.AngularVelocity = agentInfo.MaxAngularSpeed;
 
 
 
+	/*
 	auto nextTargetPos = m_Target; //To start you can use the mouse position as guidance
 
 	auto vHousesInFOV = GetHousesInFOV();//uses m_pInterface->Fov_GetHouseByIndex(...)
@@ -182,6 +189,7 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 	m_GrabItem = false; //Reset State
 	m_UseItem = false;
 	m_RemoveItem = false;
+	*/
 
 	return steering;
 }
