@@ -32,7 +32,7 @@ private:
 	vector<HouseInfo> GetHousesInFOV() const;
 	vector<EntityInfo> GetEntitiesInFOV() const;
 
-	float ClosestEnemyDistance(const std::vector<EnemyInfo>& enemies) const;
+	float ClosestEnemyDistance(const std::vector<EnemyRecord>& enemies) const;
 
 
 	//behaviors
@@ -47,6 +47,7 @@ private:
 	//information
 	std::map<int, ItemInfo> m_KnownItems;
 	std::set<HouseInfo, less<HouseInfo>> m_KnownHouses;
+	ZombieHordeInfo m_ZombieHordeInfo;
 
 
 	//constant values

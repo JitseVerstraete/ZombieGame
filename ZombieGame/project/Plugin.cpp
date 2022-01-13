@@ -49,7 +49,7 @@ void Plugin::InitGameDebugParams(GameDebugParams& params)
 	params.AutoFollowCam = true; //Automatically follow the AI? (Default = true)
 	params.RenderUI = true; //Render the IMGUI Panel? (Default = true)
 	params.SpawnEnemies = true; //Do you want to spawn enemies? (Default = true)
-	params.EnemyCount = 0; //How many enemies? (Default = 20)
+	params.EnemyCount = 20; //How many enemies? (Default = 20)
 	params.GodMode = true; //GodMode > You can't die, can be usefull to inspect certain behaviours (Default = false)
 	params.AutoGrabClosestItem = true; //A call to Item_Grab(...) returns the closest item that can be grabbed. (EntityInfo argument is ignored)
 }
@@ -82,9 +82,15 @@ void Plugin::Update(float dt)
 		std::cout << std::endl;
 
 	}
+	
+	//recorded enemy positions
+	for (const auto& e : m_ZombieHordeInfo.GetRecordedEnemies())
+	{
+		m_pInterface->Draw_Point(e.Position, 3.f, { 0.f, 1.f, 0.f });
+	}
 
 
-
+	
 	//world border
 	Elite::Vector2 center{ m_pInterface->World_GetInfo().Center };
 	Elite::Vector2 bounds{ m_pInterface->World_GetInfo().Dimensions };
@@ -111,9 +117,7 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 	auto houses = GetHousesInFOV();
 
 
-
-	ZombieInfo hordeInfo{};
-	std::vector<EnemyInfo> enemiesInFov{};
+	m_ZombieHordeInfo.Update(dt);
 
 	EnemyInfo tempEnemy{};
 	ItemInfo tempItem{};
@@ -126,7 +130,7 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 		{
 		case eEntityType::ENEMY:
 			m_pInterface->Enemy_GetInfo(ent, tempEnemy);
-			enemiesInFov.push_back(tempEnemy);
+			m_ZombieHordeInfo.AddEnemy(tempEnemy);
 			m_pFaceBehavior->SetTargetInfo(TargetInfo(tempEnemy.Location, tempEnemy.LinearVelocity));
 			break;
 		case eEntityType::ITEM:
@@ -140,6 +144,7 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 		}
 	}
 
+
 	//record houses
 	for (const HouseInfo& hi : houses)
 	{
@@ -150,15 +155,15 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 
 	float distanceToAgent{};
 	//choose if the agent should run  and how much it should prioritize fleeing
-	if (enemiesInFov.size() > 0)
+	if (m_ZombieHordeInfo.GetRecordedEnemies().size() > 0)
 	{
-		float closestEnemyDistance{ ClosestEnemyDistance(enemiesInFov) };
+		float closestEnemyDistance{ ClosestEnemyDistance(m_ZombieHordeInfo.GetRecordedEnemies()) };
 		if (closestEnemyDistance < m_RunRange && aInfo.Stamina > 5.f)
 		{
 			steering.RunMode = true;
 		}
 
-		float newFleeWeight{ (m_VisionRange * m_VisionRange / 2) / (closestEnemyDistance * closestEnemyDistance) };
+		float newFleeWeight{ (m_VisionRange * m_VisionRange ) / (closestEnemyDistance * closestEnemyDistance) };
 		m_pEvasiveSeek->SetBehaviorWeight(1, newFleeWeight);
 
 	}
@@ -172,9 +177,8 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 	
 
 
-
-	hordeInfo.m_EnemiesInFov = enemiesInFov;
-	m_pZombieEvadeBehavior->SetZombieInfo(hordeInfo);
+	//update 
+	m_pZombieEvadeBehavior->SetZombieInfo(m_ZombieHordeInfo);
 	m_pSeekBehavior->SetTargetInfo(TargetInfo(m_pInterface->NavMesh_GetClosestPathPoint(m_Target), Elite::Vector2()));
 
 	SteeringOutput movementOutput = m_pEvasiveSeek->CalculateSteering(dt, aInfo);
@@ -186,7 +190,7 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 	steering.AngularVelocity = faceOutput.AngularVelocity;
 
 
-	steering.AutoOrient = true;
+	steering.AngularVelocity = 100.f;
 
 	return steering;
 }
@@ -236,16 +240,16 @@ vector<EntityInfo> Plugin::GetEntitiesInFOV() const
 	return vEntitiesInFOV;
 }
 
-float Plugin::ClosestEnemyDistance(const std::vector<EnemyInfo>& enemies) const
+float Plugin::ClosestEnemyDistance(const std::vector<EnemyRecord>& enemies) const
 {
 	float toReturn{ FLT_MAX };
 
 	Elite::Vector2 agentPos = m_pInterface->Agent_GetInfo().Position;
-	auto it = std::min_element(enemies.begin(), enemies.end(), [agentPos](const EnemyInfo& e1, const EnemyInfo& e2) {return Elite::DistanceSquared(agentPos, e1.Location) < Elite::DistanceSquared(agentPos, e2.Location); });
+	auto it = std::min_element(enemies.begin(), enemies.end(), [agentPos](const EnemyRecord& e1, const EnemyRecord& e2) {return Elite::DistanceSquared(agentPos, e1.Position) < Elite::DistanceSquared(agentPos, e2.Position); });
 
 	if (it != enemies.end())
 	{
-		return Elite::Distance(agentPos, it->Location);
+		return Elite::Distance(agentPos, it->Position);
 	}
 
 

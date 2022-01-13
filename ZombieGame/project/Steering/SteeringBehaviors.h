@@ -168,11 +168,11 @@ public:
 	EvadeZombies() = default;
 	virtual ~EvadeZombies() = default;
 
-	void SetZombieInfo(const ZombieInfo& info) { m_ZombieInfo = info; }
+	void SetZombieInfo(const ZombieHordeInfo& info) { m_ZombieInfo = info; }
 	SteeringOutput CalculateSteering(float deltaT, const AgentInfo& agentInfo) override;
 
 private:
-	ZombieInfo m_ZombieInfo;
+	ZombieHordeInfo m_ZombieInfo;
 
 };
 #pragma endregion ZombieAIBehaviors

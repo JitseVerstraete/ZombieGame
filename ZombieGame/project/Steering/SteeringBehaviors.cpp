@@ -172,9 +172,9 @@ SteeringOutput Evade::CalculateSteering(float deltaT, const AgentInfo& agentInfo
 	steering.LinearVelocity = -steering.LinearVelocity;
 
 
+
 	return steering;
 }
-
 void Evade::SetFleeRadius(float radius)
 {
 	m_FleeRadius = radius;
@@ -190,11 +190,11 @@ SteeringOutput EvadeZombies::CalculateSteering(float deltaT, const AgentInfo& ag
 	Elite::Vector2 targetForce{};
 	Elite::Vector2 tempForce{};
 
-	for (const EnemyInfo& enemy : m_ZombieInfo.m_EnemiesInFov)
+	for (const EnemyRecord& enemy : m_ZombieInfo.GetRecordedEnemies())
 	{
-		tempForce = agentInfo.Position - enemy.Location;
+		tempForce = agentInfo.Position - enemy.Position;
 
-		targetForce += tempForce / (tempForce.Magnitude() * tempForce.Magnitude());
+		targetForce += (tempForce * enemy.lifetime)/ (tempForce.Magnitude() * tempForce.Magnitude() ) ;
 	}
 
 
@@ -202,10 +202,6 @@ SteeringOutput EvadeZombies::CalculateSteering(float deltaT, const AgentInfo& ag
 	targetForce *= agentInfo.MaxLinearSpeed;
 
 	output.LinearVelocity = targetForce;
-
-
-	//run the calculatesteering function of the evade class
-
 
 	return output;
 }
