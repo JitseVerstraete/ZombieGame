@@ -184,7 +184,9 @@
   <ItemGroup>
     <ClInclude Include="Plugin.h" />
     <ClInclude Include="stdafx.h" />
+    <ClInclude Include="Steering\CombinedSteeringBehaviors.h" />
     <ClInclude Include="Steering\SteeringBehaviors.h" />
+    <ClInclude Include="ZombieInfo.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Plugin.cpp" />
@@ -192,7 +194,9 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="Steering\CombinedSteeringBehaviors.cpp" />
     <ClCompile Include="Steering\SteeringBehaviors.cpp" />
+    <ClCompile Include="ZombieInfo.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="ClassDiagram.cd" />

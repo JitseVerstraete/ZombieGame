@@ -2,6 +2,9 @@
 #include "Plugin.h"
 #include "IExamInterface.h"
 
+#include <set>
+
+
 //Called only once, during initialization
 void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 {
@@ -21,15 +24,23 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 void Plugin::DllInit()
 {
 	//Called when the plugin is loaded
-	m_pWanderBehavior = new Wander();
-	
+	m_pZombieEvadeBehavior = new EvadeZombies();
+	m_pSeekBehavior = new Seek();
+	m_pFaceBehavior = new Face();
+
+	std::vector <BlendedSteering::WeightedBehavior> behaviors{ {BlendedSteering::WeightedBehavior(m_pSeekBehavior, 1), BlendedSteering::WeightedBehavior(m_pZombieEvadeBehavior, 1) } };
+	m_pEvasiveSeek = new BlendedSteering(behaviors);
+
 }
 
 //Called only once
 void Plugin::DllShutdown()
 {
 	//Called when the plugin gets unloaded
-	SAFE_DELETE(m_pWanderBehavior);
+	SAFE_DELETE(m_pZombieEvadeBehavior);
+	SAFE_DELETE(m_pSeekBehavior);
+	SAFE_DELETE(m_pFaceBehavior);
+	SAFE_DELETE(m_pEvasiveSeek);
 }
 
 //Called only once, during initialization
@@ -38,8 +49,8 @@ void Plugin::InitGameDebugParams(GameDebugParams& params)
 	params.AutoFollowCam = true; //Automatically follow the AI? (Default = true)
 	params.RenderUI = true; //Render the IMGUI Panel? (Default = true)
 	params.SpawnEnemies = true; //Do you want to spawn enemies? (Default = true)
-	params.EnemyCount = 20; //How many enemies? (Default = 20)
-	params.GodMode = false; //GodMode > You can't die, can be usefull to inspect certain behaviours (Default = false)
+	params.EnemyCount = 0; //How many enemies? (Default = 20)
+	params.GodMode = true; //GodMode > You can't die, can be usefull to inspect certain behaviours (Default = false)
 	params.AutoGrabClosestItem = true; //A call to Item_Grab(...) returns the closest item that can be grabbed. (EntityInfo argument is ignored)
 }
 
@@ -56,36 +67,23 @@ void Plugin::Update(float dt)
 		const Elite::Vector2 pos = Elite::Vector2(static_cast<float>(mouseData.X), static_cast<float>(mouseData.Y));
 		m_Target = m_pInterface->Debug_ConvertScreenToWorld(pos);
 	}
-	else if (m_pInterface->Input_IsKeyboardKeyDown(Elite::eScancode_Space))
-	{
-		m_CanRun = true;
-	}
-	else if (m_pInterface->Input_IsKeyboardKeyDown(Elite::eScancode_Left))
-	{
-		m_AngSpeed -= Elite::ToRadians(10);
-	}
-	else if (m_pInterface->Input_IsKeyboardKeyDown(Elite::eScancode_Right))
-	{
-		m_AngSpeed += Elite::ToRadians(10);
-	}
-	else if (m_pInterface->Input_IsKeyboardKeyDown(Elite::eScancode_G))
-	{
-		m_GrabItem = true;
-	}
-	else if (m_pInterface->Input_IsKeyboardKeyDown(Elite::eScancode_U))
-	{
-		m_UseItem = true;
-	}
-	else if (m_pInterface->Input_IsKeyboardKeyDown(Elite::eScancode_R))
-	{
-		m_RemoveItem = true;
-	}
-	else if (m_pInterface->Input_IsKeyboardKeyUp(Elite::eScancode_Space))
-	{
-		m_CanRun = false;
-	}
 
 	//DEBUG RENDERING
+
+	//Debug Print
+	m_DebugPrintTimer += dt;
+	if (m_DebugPrintTimer > m_DebugPrintInterval)
+	{
+		m_DebugPrintTimer -= m_DebugPrintInterval;
+
+		std::cout << "---Debug print record---\n";
+		std::cout << "Number of houses recorded: " << m_KnownHouses.size() << std::endl;
+		std::cout << "Number of items recorded: " << m_KnownItems.size() << std::endl;
+		std::cout << std::endl;
+
+	}
+
+
 
 	//world border
 	Elite::Vector2 center{ m_pInterface->World_GetInfo().Center };
@@ -107,89 +105,88 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 
 	auto steering = SteeringPlugin_Output();
 
-	//Use the Interface (IAssignmentInterface) to 'interface' with the AI_Framework
-	auto agentInfo = m_pInterface->Agent_GetInfo();
-
-	steering =  m_pWanderBehavior->CalculateSteering(dt, agentInfo);
-	steering.AutoOrient = false;
-	steering.AngularVelocity = agentInfo.MaxAngularSpeed;
+	//GETTING INFO
+	auto aInfo = m_pInterface->Agent_GetInfo();
+	auto entities = GetEntitiesInFOV();
+	auto houses = GetHousesInFOV();
 
 
 
-	/*
-	auto nextTargetPos = m_Target; //To start you can use the mouse position as guidance
+	ZombieInfo hordeInfo{};
+	std::vector<EnemyInfo> enemiesInFov{};
 
-	auto vHousesInFOV = GetHousesInFOV();//uses m_pInterface->Fov_GetHouseByIndex(...)
-	auto vEntitiesInFOV = GetEntitiesInFOV(); //uses m_pInterface->Fov_GetEntityByIndex(...)
+	EnemyInfo tempEnemy{};
+	ItemInfo tempItem{};
 
-	for (auto& e : vEntitiesInFOV)
+
+	//record entities
+	for (const auto& ent : entities)
 	{
-		if (e.Type == eEntityType::PURGEZONE)
+		switch (ent.Type)
 		{
-			PurgeZoneInfo zoneInfo;
-			m_pInterface->PurgeZone_GetInfo(e, zoneInfo);
-			std::cout << "Purge Zone in FOV:" << e.Location.x << ", "<< e.Location.y <<  " ---EntityHash: " << e.EntityHash << "---Radius: "<< zoneInfo.Radius << std::endl;
-		}
-	}
-	
-
-	//INVENTORY USAGE DEMO
-	//********************
-
-	if (m_GrabItem)
-	{
-		ItemInfo item;
-		//Item_Grab > When DebugParams.AutoGrabClosestItem is TRUE, the Item_Grab function returns the closest item in range
-		//Keep in mind that DebugParams are only used for debugging purposes, by default this flag is FALSE
-		//Otherwise, use GetEntitiesInFOV() to retrieve a vector of all entities in the FOV (EntityInfo)
-		//Item_Grab gives you the ItemInfo back, based on the passed EntityHash (retrieved by GetEntitiesInFOV)
-		if (m_pInterface->Item_Grab({}, item))
-		{
-			//Once grabbed, you can add it to a specific inventory slot
-			//Slot must be empty
-			m_pInterface->Inventory_AddItem(0, item);
+		case eEntityType::ENEMY:
+			m_pInterface->Enemy_GetInfo(ent, tempEnemy);
+			enemiesInFov.push_back(tempEnemy);
+			m_pFaceBehavior->SetTargetInfo(TargetInfo(tempEnemy.Location, tempEnemy.LinearVelocity));
+			break;
+		case eEntityType::ITEM:
+			m_pInterface->Item_GetInfo(ent, tempItem);
+			m_KnownItems.insert(std::pair<int, ItemInfo>(tempItem.ItemHash, tempItem));
+			break;
+		case eEntityType::PURGEZONE:
+			break;
+		default:
+			break;
 		}
 	}
 
-	if (m_UseItem)
+	//record houses
+	for (const HouseInfo& hi : houses)
 	{
-		//Use an item (make sure there is an item at the given inventory slot)
-		m_pInterface->Inventory_UseItem(0);
+		m_KnownHouses.insert(hi);
 	}
 
-	if (m_RemoveItem)
+
+
+	float distanceToAgent{};
+	//choose if the agent should run  and how much it should prioritize fleeing
+	if (enemiesInFov.size() > 0)
 	{
-		//Remove an item from a inventory slot
-		m_pInterface->Inventory_RemoveItem(0);
+		float closestEnemyDistance{ ClosestEnemyDistance(enemiesInFov) };
+		if (closestEnemyDistance < m_RunRange && aInfo.Stamina > 5.f)
+		{
+			steering.RunMode = true;
+		}
+
+		float newFleeWeight{ (m_VisionRange * m_VisionRange / 2) / (closestEnemyDistance * closestEnemyDistance) };
+		m_pEvasiveSeek->SetBehaviorWeight(1, newFleeWeight);
+
+	}
+	else
+	{
+		steering.RunMode = false;
+		m_pEvasiveSeek->SetBehaviorWeight(1, 0.f);
 	}
 
-	//Simple Seek Behaviour (towards Target)
-	auto nextPoint = m_pInterface->NavMesh_GetClosestPathPoint(nextTargetPos);
-	steering.LinearVelocity = nextPoint - agentInfo.Position; //Desired Velocity
-	steering.LinearVelocity.Normalize(); //Normalize Desired Velocity
-	steering.LinearVelocity *= agentInfo.MaxLinearSpeed; //Rescale to Max Speed
 
-	if (Distance(nextTargetPos, agentInfo.Position) < 2.f)
-	{
-		steering.LinearVelocity = Elite::ZeroVector2;
-	}
-
-	steering.AutoOrient = false;
-	steering.AngularVelocity = 1000.f;
 	
 
-	//steering.AngularVelocity = m_AngSpeed; //Rotate your character to inspect the world while walking
-	//steering.AutoOrient = true; //Setting AutoOrientate to TRue overrides the AngularVelocity
 
-	steering.RunMode = m_CanRun; //If RunMode is True > MaxLinSpd is increased for a limited time (till your stamina runs out)
 
-								 //SteeringPlugin_Output is works the exact same way a SteeringBehaviour output
+	hordeInfo.m_EnemiesInFov = enemiesInFov;
+	m_pZombieEvadeBehavior->SetZombieInfo(hordeInfo);
+	m_pSeekBehavior->SetTargetInfo(TargetInfo(m_pInterface->NavMesh_GetClosestPathPoint(m_Target), Elite::Vector2()));
 
-								 //@End (Demo Purposes)
-	m_GrabItem = false; //Reset State
-	m_UseItem = false;
-	m_RemoveItem = false;
-	*/
+	SteeringOutput movementOutput = m_pEvasiveSeek->CalculateSteering(dt, aInfo);
+	SteeringOutput faceOutput = m_pFaceBehavior->CalculateSteering(dt, aInfo);
+
+	steering.LinearVelocity = movementOutput.LinearVelocity;
+	steering.LinearVelocity.Normalize();
+	steering.LinearVelocity *= aInfo.MaxLinearSpeed;
+	steering.AngularVelocity = faceOutput.AngularVelocity;
+
+
+	steering.AutoOrient = true;
 
 	return steering;
 }
@@ -237,4 +234,20 @@ vector<EntityInfo> Plugin::GetEntitiesInFOV() const
 	}
 
 	return vEntitiesInFOV;
+}
+
+float Plugin::ClosestEnemyDistance(const std::vector<EnemyInfo>& enemies) const
+{
+	float toReturn{ FLT_MAX };
+
+	Elite::Vector2 agentPos = m_pInterface->Agent_GetInfo().Position;
+	auto it = std::min_element(enemies.begin(), enemies.end(), [agentPos](const EnemyInfo& e1, const EnemyInfo& e2) {return Elite::DistanceSquared(agentPos, e1.Location) < Elite::DistanceSquared(agentPos, e2.Location); });
+
+	if (it != enemies.end())
+	{
+		return Elite::Distance(agentPos, it->Location);
+	}
+
+
+	return toReturn;
 }

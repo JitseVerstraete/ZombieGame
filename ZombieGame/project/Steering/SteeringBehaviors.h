@@ -11,8 +11,22 @@
 // Includes & Forward Declarations
 //-----------------------------------------------------------------
 #include "../../inc/Exam_HelperStructs.h"
+#include "../ZombieInfo.h"
 
+struct TargetInfo
+{
+	TargetInfo() {}
+	TargetInfo(const Elite::Vector2& pos, const Elite::Vector2& vel) :Position{ pos }, LinearVelocity{ vel } {}
+	Elite::Vector2 Position;
+	Elite::Vector2 LinearVelocity;
+};
 
+struct SteeringOutput
+{
+	Elite::Vector2 LinearVelocity;
+	float AngularVelocity;
+	bool IsValid;
+};
 
 #pragma region **ISTEERINGBEHAVIOR** (BASE)
 class ISteeringBehavior
@@ -21,10 +35,10 @@ public:
 	ISteeringBehavior() = default;
 	virtual ~ISteeringBehavior() = default;
 
-	virtual SteeringPlugin_Output CalculateSteering(float deltaT, const AgentInfo& agentInfo) = 0;
+	virtual SteeringOutput CalculateSteering(float deltaT, const AgentInfo& agentInfo) = 0;
 
 	//Seek Functions
-	void SetTargetInfo(const EnemyInfo& target) { m_TargetInfo = target; }
+	void SetTargetInfo(const TargetInfo& target) { m_TargetInfo = target; }
 
 	template<class T, typename std::enable_if<std::is_base_of<ISteeringBehavior, T>::value>::type* = nullptr>
 	T* As()
@@ -33,13 +47,12 @@ public:
 	}
 
 protected:
-	EnemyInfo m_TargetInfo;
+	TargetInfo m_TargetInfo;
 };
 #pragma endregion
 
-///////////////////////////////////////
+#pragma region SimpleBehaviors
 //SEEK
-//****
 class Seek : public ISteeringBehavior
 {
 public:
@@ -47,12 +60,10 @@ public:
 	virtual ~Seek() = default;
 
 	//Seek Behaviour
-	SteeringPlugin_Output CalculateSteering(float deltaT, const AgentInfo& agentInfo) override;
+	SteeringOutput CalculateSteering(float deltaT, const AgentInfo& agentInfo) override;
 };
 
-/////////////////////////
 //FLEE
-//****
 class Flee : public Seek
 {
 public:
@@ -60,11 +71,11 @@ public:
 	virtual ~Flee() = default;
 
 	//Flee Behavior
-	SteeringPlugin_Output CalculateSteering(float deltaT, const AgentInfo& agentInfo) override;
+	SteeringOutput CalculateSteering(float deltaT, const AgentInfo& agentInfo) override;
 
 };
 
-//Arrive
+//ARRIVE
 class Arrive :public Seek
 {
 public:
@@ -77,24 +88,24 @@ public:
 	
 
 	//Arrive Behavior
-	SteeringPlugin_Output CalculateSteering(float deltaT, const AgentInfo& agentInfo) override;
+	SteeringOutput CalculateSteering(float deltaT, const AgentInfo& agentInfo) override;
 private:
 	float m_SlowdownRadius = 15.f;
 	float m_TargetRadius = 1.f;
 };
 
+//FACE
 class Face : public ISteeringBehavior
 {
 public:
 	Face() = default;
 	virtual ~Face() = default;
 
-	SteeringPlugin_Output CalculateSteering(float deltaT, const AgentInfo& agentInfo) override;
+	SteeringOutput CalculateSteering(float deltaT, const AgentInfo& agentInfo) override;
 
 };
 
-
-//WAnder
+//WANDER
 class Wander : public Seek
 {
 public:
@@ -104,7 +115,7 @@ public:
 	}
 	virtual ~Wander() = default;
 
-	SteeringPlugin_Output CalculateSteering(float deltaT, const AgentInfo& agentInfo) override;
+	SteeringOutput CalculateSteering(float deltaT, const AgentInfo& agentInfo) override;
 
 	void SetWanderDistance(float distance);
 	void SetWanderRadius(float radius);
@@ -120,29 +131,52 @@ protected:
 	float m_currentAngle = Elite::ToRadians(90);
 };
 
-
-//Pursuit
+//PURSUIT
 class Pursuit : public ISteeringBehavior
 {
 public:
 	Pursuit() = default;
 	virtual ~Pursuit() = default;
 
-	SteeringPlugin_Output CalculateSteering(float deltaT, const AgentInfo& agentInfo) override;
+	SteeringOutput CalculateSteering(float deltaT, const AgentInfo& agentInfo) override;
 };
 
+//EVADE
 class Evade : public Pursuit
 {
 public:
 	Evade() = default;
 	virtual ~Evade() = default;
 
-	SteeringPlugin_Output CalculateSteering(float deltaT, const AgentInfo& agentInfo) override;
+	SteeringOutput CalculateSteering(float deltaT, const AgentInfo& agentInfo) override;
 	void SetFleeRadius(float radius);
 
 private:
 	float m_FleeRadius = 10.f;
 };
+
+
+
+
+#pragma endregion SimpleBehaviors
+
+#pragma region ZombieAIBehaviors
+
+class EvadeZombies :public ISteeringBehavior
+{
+public:
+	EvadeZombies() = default;
+	virtual ~EvadeZombies() = default;
+
+	void SetZombieInfo(const ZombieInfo& info) { m_ZombieInfo = info; }
+	SteeringOutput CalculateSteering(float deltaT, const AgentInfo& agentInfo) override;
+
+private:
+	ZombieInfo m_ZombieInfo;
+
+};
+#pragma endregion ZombieAIBehaviors
+
 
 
 

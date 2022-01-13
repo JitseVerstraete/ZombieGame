@@ -2,6 +2,10 @@
 #include "IExamPlugin.h"
 #include "Exam_HelperStructs.h"
 #include "Steering\SteeringBehaviors.h"
+#include "Steering\CombinedSteeringBehaviors.h"
+
+#include <map>
+#include <set>
 
 class IBaseInterface;
 class IExamInterface;
@@ -28,17 +32,35 @@ private:
 	vector<HouseInfo> GetHousesInFOV() const;
 	vector<EntityInfo> GetEntitiesInFOV() const;
 
+	float ClosestEnemyDistance(const std::vector<EnemyInfo>& enemies) const;
+
 
 	//behaviors
-	Wander* m_pWanderBehavior = nullptr;
-	
+	BlendedSteering* m_pEvasiveSeek = nullptr;
 
+	EvadeZombies* m_pZombieEvadeBehavior = nullptr;
+	Seek* m_pSeekBehavior = nullptr;
+	Face* m_pFaceBehavior = nullptr;
+
+
+
+	//information
+	std::map<int, ItemInfo> m_KnownItems;
+	std::set<HouseInfo, less<HouseInfo>> m_KnownHouses;
+
+
+	//constant values
+	const float m_GrabRange = 3.f;
+	const float m_VisionRange = 16.f;
+	const float m_RunRange = 8.f;
+
+	//debug print
+	const float m_DebugPrintInterval = 2.f;
+	float m_DebugPrintTimer = 0.f;
+
+	//mouse target
 	Elite::Vector2 m_Target = {};
-	bool m_CanRun = false; //Demo purpose
-	bool m_GrabItem = false; //Demo purpose
-	bool m_UseItem = false; //Demo purpose
-	bool m_RemoveItem = false; //Demo purpose
-	float m_AngSpeed = 0.f; //Demo purpose
+
 };
 
 //ENTRY

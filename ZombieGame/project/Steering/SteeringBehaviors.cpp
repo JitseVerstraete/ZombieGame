@@ -9,11 +9,11 @@
 
 //SEEK
 //****
-SteeringPlugin_Output Seek::CalculateSteering(float deltaT, const AgentInfo& agentInfo)
+SteeringOutput Seek::CalculateSteering(float deltaT, const AgentInfo& agentInfo)
 {
-	SteeringPlugin_Output steering = {};
+	SteeringOutput steering = {};
 
-	steering.LinearVelocity = m_TargetInfo.Location - agentInfo.Position;
+	steering.LinearVelocity = m_TargetInfo.Position - agentInfo.Position;
 	steering.LinearVelocity.Normalize();
 	steering.LinearVelocity *= agentInfo.MaxLinearSpeed;
 
@@ -23,9 +23,9 @@ SteeringPlugin_Output Seek::CalculateSteering(float deltaT, const AgentInfo& age
 
 //FLEE
 //****
-SteeringPlugin_Output Flee::CalculateSteering(float deltaT, const AgentInfo& agentInfo)
+SteeringOutput Flee::CalculateSteering(float deltaT, const AgentInfo& agentInfo)
 {
-	SteeringPlugin_Output steering = { Seek::CalculateSteering(deltaT, agentInfo) };
+	SteeringOutput steering = { Seek::CalculateSteering(deltaT, agentInfo) };
 	steering.LinearVelocity = -steering.LinearVelocity;
 	return steering;
 }
@@ -43,11 +43,11 @@ void Arrive::SetTargetRadius(float targetRadius)
 
 //ARRIVE
 //******
-SteeringPlugin_Output Arrive::CalculateSteering(float deltaT, const AgentInfo& agentInfo)
+SteeringOutput Arrive::CalculateSteering(float deltaT, const AgentInfo& agentInfo)
 {
-	SteeringPlugin_Output steering{ Seek::CalculateSteering(deltaT, agentInfo) };
+	SteeringOutput steering{ Seek::CalculateSteering(deltaT, agentInfo) };
 
-	Elite::Vector2 toTarget{ m_TargetInfo.Location - agentInfo.Position };
+	Elite::Vector2 toTarget{ m_TargetInfo.Position - agentInfo.Position };
 	float distance{ toTarget.Magnitude() };
 
 	if (distance < m_TargetRadius)
@@ -70,31 +70,30 @@ SteeringPlugin_Output Arrive::CalculateSteering(float deltaT, const AgentInfo& a
 
 //FACE
 //****
-SteeringPlugin_Output Face::CalculateSteering(float deltaT, const AgentInfo& agentInfo)
+SteeringOutput Face::CalculateSteering(float deltaT, const AgentInfo& agentInfo)
 {
-	SteeringPlugin_Output steering{};
+	SteeringOutput steering{};
 
-	Elite::Vector2 toTarget{ m_TargetInfo.Location - agentInfo.Position };
+	Elite::Vector2 toTarget{ m_TargetInfo.Position - agentInfo.Position };
 
 
 	float currentAngle{ agentInfo.Orientation - float(M_PI) / 2 };
 	Elite::Vector2 forward{ cos(currentAngle), sin(currentAngle) };
 
 	steering.AngularVelocity = Elite::AngleBetween(forward, toTarget) * 2;
-	
+
 	return steering;
 }
 
-SteeringPlugin_Output Wander::CalculateSteering(float deltaT, const AgentInfo& agentInfo)
+SteeringOutput Wander::CalculateSteering(float deltaT, const AgentInfo& agentInfo)
 {
 	Elite::Vector2 agentDirection = agentInfo.LinearVelocity;
 
-	
+
 	if ((agentDirection.x < 0.01f && agentDirection.x > -0.01f) && (agentDirection.y < 0.01f && agentDirection.y > -0.01f))
 	{
-		agentDirection  = { 0.f,1.f };
+		agentDirection = { 0.f,1.f };
 	}
-	
 
 
 	//add random offset to angle
@@ -117,11 +116,11 @@ SteeringPlugin_Output Wander::CalculateSteering(float deltaT, const AgentInfo& a
 
 	EnemyInfo toSet{};
 	toSet.Location = targetPoint;
-	m_TargetInfo.Location = targetPoint;
+	m_TargetInfo.Position = targetPoint;
 
 
 
-	SteeringPlugin_Output steering{ Seek::CalculateSteering(deltaT, agentInfo) };
+	SteeringOutput steering{ Seek::CalculateSteering(deltaT, agentInfo) };
 
 
 	return steering;
@@ -142,11 +141,11 @@ void Wander::SetMaxAngleChange(float delta)
 	m_MaxAngleChange = delta;
 }
 
-SteeringPlugin_Output Pursuit::CalculateSteering(float deltaT, const AgentInfo& agentInfo)
+SteeringOutput Pursuit::CalculateSteering(float deltaT, const AgentInfo& agentInfo)
 {
-	SteeringPlugin_Output steering = {};
+	SteeringOutput steering = {};
 
-	Elite::Vector2 interceptionPoint{(m_TargetInfo.Location + (m_TargetInfo.LinearVelocity * deltaT * 10.f)) };
+	Elite::Vector2 interceptionPoint{ (m_TargetInfo.Position + (m_TargetInfo.LinearVelocity * deltaT * 10.f)) };
 
 	steering.LinearVelocity = interceptionPoint - agentInfo.Position;
 	steering.LinearVelocity.Normalize();
@@ -155,21 +154,21 @@ SteeringPlugin_Output Pursuit::CalculateSteering(float deltaT, const AgentInfo& 
 	return steering;
 }
 
-SteeringPlugin_Output Evade::CalculateSteering(float deltaT, const AgentInfo& agentInfo)
+SteeringOutput Evade::CalculateSteering(float deltaT, const AgentInfo& agentInfo)
 {
 
 
-	float distanceToTarget = Elite::Distance(agentInfo.Position , m_TargetInfo.Location);
+	float distanceToTarget = Elite::Distance(agentInfo.Position, m_TargetInfo.Position);
 	if (distanceToTarget > m_FleeRadius)
 	{
-		return SteeringPlugin_Output();
+		return SteeringOutput();
 
 	}
 
 	//DEBUGRENDERER2D->DrawPoint(m_Target.Position + m_Target.LinearVelocity * deltaT, 5.f, { 1,1,0 }, 0.f);
-	 
 
-	SteeringPlugin_Output steering{ Pursuit::CalculateSteering(deltaT, agentInfo) };
+
+	SteeringOutput steering{ Pursuit::CalculateSteering(deltaT, agentInfo) };
 	steering.LinearVelocity = -steering.LinearVelocity;
 
 
@@ -180,4 +179,33 @@ void Evade::SetFleeRadius(float radius)
 {
 	m_FleeRadius = radius;
 	return;
+}
+
+SteeringOutput EvadeZombies::CalculateSteering(float deltaT, const AgentInfo& agentInfo)
+{
+	SteeringOutput output{};
+
+	//set the target info based on the known zombie info
+
+	Elite::Vector2 targetForce{};
+	Elite::Vector2 tempForce{};
+
+	for (const EnemyInfo& enemy : m_ZombieInfo.m_EnemiesInFov)
+	{
+		tempForce = agentInfo.Position - enemy.Location;
+
+		targetForce += tempForce / (tempForce.Magnitude() * tempForce.Magnitude());
+	}
+
+
+	targetForce.Normalize();
+	targetForce *= agentInfo.MaxLinearSpeed;
+
+	output.LinearVelocity = targetForce;
+
+
+	//run the calculatesteering function of the evade class
+
+
+	return output;
 }
