@@ -182,6 +182,10 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="EliteDecisionMaking\EBlackboard.h" />
+    <ClInclude Include="EliteDecisionMaking\EDecisionMaking.h" />
+    <ClInclude Include="EliteDecisionMaking\EliteBehaviorTree\EBehaviorTree.h" />
+    <ClInclude Include="EliteDecisionMaking\EliteFiniteStateMachine\EFiniteStateMachine.h" />
     <ClInclude Include="EliteGeometry\EGeometry.h" />
     <ClInclude Include="EliteGeometry\EGeometry2DTypes.h" />
     <ClInclude Include="EliteGeometry\EGeometry2DUtilities.h" />
@@ -193,6 +197,8 @@
     <ClInclude Include="ZombieInfo.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="EliteDecisionMaking\EliteBehaviorTree\EBehaviorTree.cpp" />
+    <ClCompile Include="EliteDecisionMaking\EliteFiniteStateMachine\EFiniteStateMachine.cpp" />
     <ClCompile Include="EliteGeometry\EGeometry2DTypes.cpp" />
     <ClCompile Include="ExplorationGrid.cpp" />
     <ClCompile Include="Plugin.cpp" />
@@ -203,9 +209,6 @@
     <ClCompile Include="Steering\CombinedSteeringBehaviors.cpp" />
     <ClCompile Include="Steering\SteeringBehaviors.cpp" />
     <ClCompile Include="ZombieInfo.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="ClassDiagram.cd" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

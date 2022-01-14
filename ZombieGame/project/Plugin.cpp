@@ -9,12 +9,19 @@
 //Called only once, during initialization
 void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 {
+	srand(time(NULL));
+
+
+
 	//Retrieving the interface
 	//This interface gives you access to certain actions the AI_Framework can perform for you
 	m_pInterface = static_cast<IExamInterface*>(pInterface);
 
 	auto world = m_pInterface->World_GetInfo();
 	m_ExplorationGrid = ExplorationGrid(world.Center, world.Dimensions.x / 2, world.Dimensions.y / 2, 20, 20);
+	//m_Target = m_ExplorationGrid.GetRandomUnexploredCell().GetCellCenter();
+	
+
 
 
 	//Bit information about the plugin
@@ -31,7 +38,9 @@ void Plugin::DllInit()
 	//Called when the plugin is loaded
 	m_pZombieEvadeBehavior = new EvadeZombies();
 	m_pSeekBehavior = new Seek();
-	m_pFaceBehavior = new Face();
+	m_pRadarBehavior = new Radar();
+	m_pAimBehavior = new AimZombie();
+
 
 	std::vector <BlendedSteering::WeightedBehavior> behaviors{ {BlendedSteering::WeightedBehavior(m_pSeekBehavior, 1), BlendedSteering::WeightedBehavior(m_pZombieEvadeBehavior, 1) } };
 	m_pEvasiveSeek = new BlendedSteering(behaviors);
@@ -46,7 +55,6 @@ void Plugin::DllShutdown()
 	//Called when the plugin gets unloaded
 	SAFE_DELETE(m_pZombieEvadeBehavior);
 	SAFE_DELETE(m_pSeekBehavior);
-	SAFE_DELETE(m_pFaceBehavior);
 	SAFE_DELETE(m_pEvasiveSeek);
 }
 
@@ -56,9 +64,10 @@ void Plugin::InitGameDebugParams(GameDebugParams& params)
 	params.AutoFollowCam = true; //Automatically follow the AI? (Default = true)
 	params.RenderUI = true; //Render the IMGUI Panel? (Default = true)
 	params.SpawnEnemies = true; //Do you want to spawn enemies? (Default = true)
-	params.EnemyCount = 20; //How many enemies? (Default = 20)
+	params.EnemyCount = 30; //How many enemies? (Default = 20)
 	params.GodMode = true; //GodMode > You can't die, can be usefull to inspect certain behaviours (Default = false)
 	params.AutoGrabClosestItem = true; //A call to Item_Grab(...) returns the closest item that can be grabbed. (EntityInfo argument is ignored)
+	
 }
 
 //Only Active in DEBUG Mode
@@ -69,10 +78,12 @@ void Plugin::Update(float dt)
 	//In the end your AI should be able to walk around without external input
 	if (m_pInterface->Input_IsMouseButtonUp(Elite::InputMouseButton::eLeft))
 	{
+		
 		//Update target based on input
 		Elite::MouseData mouseData = m_pInterface->Input_GetMouseData(Elite::InputType::eMouseButton, Elite::InputMouseButton::eLeft);
 		const Elite::Vector2 pos = Elite::Vector2(static_cast<float>(mouseData.X), static_cast<float>(mouseData.Y));
 		m_Target = m_pInterface->Debug_ConvertScreenToWorld(pos);
+		
 	}
 
 	//DEBUG RENDERING
@@ -153,7 +164,6 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 		case eEntityType::ENEMY:
 			m_pInterface->Enemy_GetInfo(ent, tempEnemy);
 			m_ZombieHordeInfo.AddEnemy(tempEnemy);
-			m_pFaceBehavior->SetTargetInfo(TargetInfo(tempEnemy.Location, tempEnemy.LinearVelocity));
 			break;
 		case eEntityType::ITEM:
 			m_pInterface->Item_GetInfo(ent, tempItem);
@@ -165,7 +175,6 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 			break;
 		}
 	}
-
 
 	//record houses
 	for (const HouseInfo& hi : houses)
@@ -195,21 +204,18 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 		m_pEvasiveSeek->SetBehaviorWeight(1, 0.f);
 	}
 
-
-	//update 
+	//update behaviors
 	m_pZombieEvadeBehavior->SetZombieInfo(m_ZombieHordeInfo);
+	m_pAimBehavior->SetZombieInfo(m_ZombieHordeInfo);
 	m_pSeekBehavior->SetTargetInfo(TargetInfo(m_pInterface->NavMesh_GetClosestPathPoint(m_Target), Elite::Vector2()));
 
 	SteeringOutput movementOutput = m_pEvasiveSeek->CalculateSteering(dt, aInfo);
-	SteeringOutput faceOutput = m_pFaceBehavior->CalculateSteering(dt, aInfo);
 
 	steering.LinearVelocity = movementOutput.LinearVelocity;
 	steering.LinearVelocity.Normalize();
 	steering.LinearVelocity *= aInfo.MaxLinearSpeed;
-	steering.AngularVelocity = faceOutput.AngularVelocity;
 
-
-	steering.AngularVelocity = 100.f;
+	steering.AngularVelocity = m_pAimBehavior->CalculateSteering(dt, aInfo).AngularVelocity;
 
 	return steering;
 }

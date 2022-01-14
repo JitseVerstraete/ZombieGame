@@ -7,6 +7,8 @@ struct Cell
 	Cell(float left, float bottom, float width, float height);
 
 	std::vector<Elite::Vector2> GetRectPoints() const;
+	Elite::Vector2 GetCellCenter() const { return Elite::Vector2(boundingBox.bottomLeft.x + boundingBox.width / 2, boundingBox.bottomLeft.y + boundingBox.height / 2); }
+
 
 	// all the agents currently in this cell
 	bool isExplored = false;
@@ -21,6 +23,8 @@ public:
 	ExplorationGrid(const Elite::Vector2& center, float width, float height, int rows, int cols);
 
 	void Update(float dt, const AgentInfo& aInfo);
+	const Cell& GetRandomUnexploredCell() const;
+	
 
 	const std::vector<Cell>& GetCells() const { return m_Cells; }
 

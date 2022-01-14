@@ -42,7 +42,8 @@ private:
 
 	EvadeZombies* m_pZombieEvadeBehavior = nullptr;
 	Seek* m_pSeekBehavior = nullptr;
-	Face* m_pFaceBehavior = nullptr;
+	Radar* m_pRadarBehavior = nullptr;
+	AimZombie* m_pAimBehavior = nullptr;
 
 
 

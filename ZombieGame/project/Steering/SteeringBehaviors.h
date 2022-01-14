@@ -175,6 +175,30 @@ private:
 	ZombieHordeInfo m_ZombieInfo;
 
 };
+
+class Radar : public ISteeringBehavior
+{
+public:
+	Radar() = default;
+	virtual ~Radar() = default;
+
+	SteeringOutput CalculateSteering(float deltaT, const AgentInfo& agentInfo) override;
+};
+
+class AimZombie : public Face
+{
+public:
+	AimZombie() = default;
+	virtual ~AimZombie() = default;
+
+	void SetZombieInfo(const ZombieHordeInfo& info) { m_ZombieInfo = info; }
+	SteeringOutput CalculateSteering(float deltaT, const AgentInfo& agentInfo) override;
+
+private:
+	ZombieHordeInfo m_ZombieInfo;
+
+};
+
 #pragma endregion ZombieAIBehaviors
 
 

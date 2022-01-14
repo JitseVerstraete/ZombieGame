@@ -66,6 +66,22 @@ void ExplorationGrid::Update(float dt, const AgentInfo& aInfo)
 	}
 }
 
+const Cell& ExplorationGrid::GetRandomUnexploredCell() const
+{
+	size_t cellVectorSize{ m_Cells.size() };
+
+	int randomCellIndex{};
+	do
+	{
+		randomCellIndex = rand() % cellVectorSize;
+
+
+	} while (m_Cells[randomCellIndex].isExplored);
+
+	std::cout << randomCellIndex << std::endl;
+	return m_Cells[randomCellIndex];
+}
+
 int ExplorationGrid::PositionToIndex(const Elite::Vector2 pos) const
 {
 
