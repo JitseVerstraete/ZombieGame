@@ -5,12 +5,17 @@
 #include <set>
 
 
+
 //Called only once, during initialization
 void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 {
 	//Retrieving the interface
 	//This interface gives you access to certain actions the AI_Framework can perform for you
 	m_pInterface = static_cast<IExamInterface*>(pInterface);
+
+	auto world = m_pInterface->World_GetInfo();
+	m_ExplorationGrid = ExplorationGrid(world.Center, world.Dimensions.x / 2, world.Dimensions.y / 2, 20, 20);
+
 
 	//Bit information about the plugin
 	//Please fill this in!!
@@ -30,6 +35,8 @@ void Plugin::DllInit()
 
 	std::vector <BlendedSteering::WeightedBehavior> behaviors{ {BlendedSteering::WeightedBehavior(m_pSeekBehavior, 1), BlendedSteering::WeightedBehavior(m_pZombieEvadeBehavior, 1) } };
 	m_pEvasiveSeek = new BlendedSteering(behaviors);
+
+
 
 }
 
@@ -70,6 +77,7 @@ void Plugin::Update(float dt)
 
 	//DEBUG RENDERING
 
+
 	//Debug Print
 	m_DebugPrintTimer += dt;
 	if (m_DebugPrintTimer > m_DebugPrintInterval)
@@ -82,15 +90,28 @@ void Plugin::Update(float dt)
 		std::cout << std::endl;
 
 	}
-	
-	//recorded enemy positions
+
+	//draw recorded enemy positions
 	for (const auto& e : m_ZombieHordeInfo.GetRecordedEnemies())
 	{
-		m_pInterface->Draw_Point(e.Position, 3.f, { 0.f, 1.f, 0.f });
+		m_pInterface->Draw_Point(e.Position, 3.f, { 0.f, 1.f, 0.f }, 0.f);
+	}
+
+	//draw exploration grid
+	for (const auto& cell : m_ExplorationGrid.GetCells())
+	{
+
+		if (cell.isExplored)
+		{
+			m_pInterface->Draw_SolidPolygon(cell.GetRectPoints().data(), 4, { 1.f, 0.5f, 0.5f }, 0.1f);
+		}
+		else
+		{
+			m_pInterface->Draw_Polygon(cell.GetRectPoints().data(), 4, { 1.f, 1.f, 1.f }, 0.2f);
+		}
 	}
 
 
-	
 	//world border
 	Elite::Vector2 center{ m_pInterface->World_GetInfo().Center };
 	Elite::Vector2 bounds{ m_pInterface->World_GetInfo().Dimensions };
@@ -112,12 +133,13 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 	auto steering = SteeringPlugin_Output();
 
 	//GETTING INFO
-	auto aInfo = m_pInterface->Agent_GetInfo();
-	auto entities = GetEntitiesInFOV();
-	auto houses = GetHousesInFOV();
+	AgentInfo aInfo = m_pInterface->Agent_GetInfo();
+	vector<EntityInfo> entities = GetEntitiesInFOV();
+	vector<HouseInfo> houses = GetHousesInFOV();
 
 
 	m_ZombieHordeInfo.Update(dt);
+	m_ExplorationGrid.Update(dt, aInfo);
 
 	EnemyInfo tempEnemy{};
 	ItemInfo tempItem{};
@@ -163,7 +185,7 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 			steering.RunMode = true;
 		}
 
-		float newFleeWeight{ (m_VisionRange * m_VisionRange ) / (closestEnemyDistance * closestEnemyDistance) };
+		float newFleeWeight{ (m_VisionRange * m_VisionRange) / (closestEnemyDistance * closestEnemyDistance) };
 		m_pEvasiveSeek->SetBehaviorWeight(1, newFleeWeight);
 
 	}
@@ -172,9 +194,6 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 		steering.RunMode = false;
 		m_pEvasiveSeek->SetBehaviorWeight(1, 0.f);
 	}
-
-
-	
 
 
 	//update 

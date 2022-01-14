@@ -182,6 +182,10 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="EliteGeometry\EGeometry.h" />
+    <ClInclude Include="EliteGeometry\EGeometry2DTypes.h" />
+    <ClInclude Include="EliteGeometry\EGeometry2DUtilities.h" />
+    <ClInclude Include="ExplorationGrid.h" />
     <ClInclude Include="Plugin.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="Steering\CombinedSteeringBehaviors.h" />
@@ -189,6 +193,8 @@
     <ClInclude Include="ZombieInfo.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="EliteGeometry\EGeometry2DTypes.cpp" />
+    <ClCompile Include="ExplorationGrid.cpp" />
     <ClCompile Include="Plugin.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>

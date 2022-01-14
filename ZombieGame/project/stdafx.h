@@ -38,6 +38,8 @@ using namespace std;
 #include "EliteMath/EMath.h"
 #include "EliteInput/EInputCodes.h"
 #include "EliteInput/EInputData.h"
+#include "EliteGeometry\EGeometry2DTypes.h"
+
 #pragma endregion
 
 #define SAFE_DELETE(p) if (p) { delete (p); (p) = nullptr; }

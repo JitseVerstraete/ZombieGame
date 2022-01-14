@@ -3,6 +3,8 @@
 #include "Exam_HelperStructs.h"
 #include "Steering\SteeringBehaviors.h"
 #include "Steering\CombinedSteeringBehaviors.h"
+#include "ExplorationGrid.h"
+
 
 #include <map>
 #include <set>
@@ -34,7 +36,7 @@ private:
 
 	float ClosestEnemyDistance(const std::vector<EnemyRecord>& enemies) const;
 
-
+	
 	//behaviors
 	BlendedSteering* m_pEvasiveSeek = nullptr;
 
@@ -48,7 +50,9 @@ private:
 	std::map<int, ItemInfo> m_KnownItems;
 	std::set<HouseInfo, less<HouseInfo>> m_KnownHouses;
 	ZombieHordeInfo m_ZombieHordeInfo;
+	ExplorationGrid m_ExplorationGrid;
 
+	
 
 	//constant values
 	const float m_GrabRange = 3.f;

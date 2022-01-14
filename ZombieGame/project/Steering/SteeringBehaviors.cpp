@@ -165,16 +165,12 @@ SteeringOutput Evade::CalculateSteering(float deltaT, const AgentInfo& agentInfo
 
 	}
 
-	//DEBUGRENDERER2D->DrawPoint(m_Target.Position + m_Target.LinearVelocity * deltaT, 5.f, { 1,1,0 }, 0.f);
-
-
 	SteeringOutput steering{ Pursuit::CalculateSteering(deltaT, agentInfo) };
 	steering.LinearVelocity = -steering.LinearVelocity;
 
-
-
 	return steering;
 }
+
 void Evade::SetFleeRadius(float radius)
 {
 	m_FleeRadius = radius;

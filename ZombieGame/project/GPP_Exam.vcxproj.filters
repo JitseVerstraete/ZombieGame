@@ -6,6 +6,8 @@
     <ClCompile Include="Steering\SteeringBehaviors.cpp" />
     <ClCompile Include="Steering\CombinedSteeringBehaviors.cpp" />
     <ClCompile Include="ZombieInfo.cpp" />
+    <ClCompile Include="ExplorationGrid.cpp" />
+    <ClCompile Include="EliteGeometry\EGeometry2DTypes.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Plugin.h" />
@@ -13,6 +15,10 @@
     <ClInclude Include="Steering\SteeringBehaviors.h" />
     <ClInclude Include="Steering\CombinedSteeringBehaviors.h" />
     <ClInclude Include="ZombieInfo.h" />
+    <ClInclude Include="ExplorationGrid.h" />
+    <ClInclude Include="EliteGeometry\EGeometry.h" />
+    <ClInclude Include="EliteGeometry\EGeometry2DTypes.h" />
+    <ClInclude Include="EliteGeometry\EGeometry2DUtilities.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="ClassDiagram.cd" />
