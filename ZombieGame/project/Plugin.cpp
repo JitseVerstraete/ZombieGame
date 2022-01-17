@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "Plugin.h"
 #include "IExamInterface.h"
+#include "StatesAndTransitions.h"
 
 #include <set>
 
@@ -18,9 +19,24 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 	m_pInterface = static_cast<IExamInterface*>(pInterface);
 
 	auto world = m_pInterface->World_GetInfo();
-	m_ExplorationGrid = ExplorationGrid(world.Center, world.Dimensions.x / 2, world.Dimensions.y / 2, 20, 20);
+	m_pExplorationGrid = new ExplorationGrid(world.Center, world.Dimensions.x / 2, world.Dimensions.y / 2, 10, 10);
+	m_pZombieHordeInfo = new ZombieHordeInfo();
+	m_pKnownHousesInfo = new KnownHousesInfo();
 	//m_Target = m_ExplorationGrid.GetRandomUnexploredCell().GetCellCenter();
-	
+
+
+	//setup blackboard
+	m_pBlackboard = new Elite::Blackboard();
+	m_pBlackboard->AddData("KnownHouses", m_pKnownHousesInfo);
+	m_pBlackboard->AddData("ZombieHorde", m_pZombieHordeInfo);
+	m_pBlackboard->AddData("ExplorationGrid", m_pExplorationGrid);
+
+
+	//setup FSM
+	Elite::FSMState* pMovementStartState = new Exploring();
+	m_pStates.push_back(pMovementStartState);
+	m_pMovementStateMachine = new Elite::FiniteStateMachine(pMovementStartState, m_pBlackboard);
+
 
 
 
@@ -31,6 +47,7 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 	info.Student_LastName = "Verstraete";
 	info.Student_Class = "2DAE07";
 }
+
 
 //Called only once
 void Plugin::DllInit()
@@ -52,10 +69,24 @@ void Plugin::DllInit()
 //Called only once
 void Plugin::DllShutdown()
 {
-	//Called when the plugin gets unloaded
+	//clean up steering behaviors
 	SAFE_DELETE(m_pZombieEvadeBehavior);
 	SAFE_DELETE(m_pSeekBehavior);
 	SAFE_DELETE(m_pEvasiveSeek);
+	SAFE_DELETE(m_pAimBehavior);
+
+	//clean up Information structures
+
+	//clean up Blackboard
+	SAFE_DELETE(m_pBlackboard);
+
+	//clean up state machine things
+	for (auto pState : m_pStates)
+	{
+		SAFE_DELETE(pState);
+	}
+
+	SAFE_DELETE(m_pMovementStateMachine);
 }
 
 //Called only once, during initialization
@@ -67,7 +98,7 @@ void Plugin::InitGameDebugParams(GameDebugParams& params)
 	params.EnemyCount = 30; //How many enemies? (Default = 20)
 	params.GodMode = true; //GodMode > You can't die, can be usefull to inspect certain behaviours (Default = false)
 	params.AutoGrabClosestItem = true; //A call to Item_Grab(...) returns the closest item that can be grabbed. (EntityInfo argument is ignored)
-	
+
 }
 
 //Only Active in DEBUG Mode
@@ -78,12 +109,12 @@ void Plugin::Update(float dt)
 	//In the end your AI should be able to walk around without external input
 	if (m_pInterface->Input_IsMouseButtonUp(Elite::InputMouseButton::eLeft))
 	{
-		
+
 		//Update target based on input
 		Elite::MouseData mouseData = m_pInterface->Input_GetMouseData(Elite::InputType::eMouseButton, Elite::InputMouseButton::eLeft);
 		const Elite::Vector2 pos = Elite::Vector2(static_cast<float>(mouseData.X), static_cast<float>(mouseData.Y));
 		m_Target = m_pInterface->Debug_ConvertScreenToWorld(pos);
-		
+
 	}
 
 	//DEBUG RENDERING
@@ -96,30 +127,41 @@ void Plugin::Update(float dt)
 		m_DebugPrintTimer -= m_DebugPrintInterval;
 
 		std::cout << "---Debug print record---\n";
-		std::cout << "Number of houses recorded: " << m_KnownHouses.size() << std::endl;
+		std::cout << "Number of houses recorded: " << m_pKnownHousesInfo->GetNrHouses() << std::endl;
 		std::cout << "Number of items recorded: " << m_KnownItems.size() << std::endl;
 		std::cout << std::endl;
 
 	}
 
 	//draw recorded enemy positions
-	for (const auto& e : m_ZombieHordeInfo.GetRecordedEnemies())
+	for (const auto& e : m_pZombieHordeInfo->GetRecordedEnemies())
 	{
 		m_pInterface->Draw_Point(e.Position, 3.f, { 0.f, 1.f, 0.f }, 0.f);
 	}
 
 	//draw exploration grid
-	for (const auto& cell : m_ExplorationGrid.GetCells())
+	for (const auto& cell : m_pExplorationGrid->GetCells())
 	{
 
-		if (cell.isExplored)
+		switch (cell.state)
 		{
+		case CellState::UNKNOWN:
+			m_pInterface->Draw_SolidPolygon(cell.GetRectPoints().data(), 4, { 0.5f, 0.5f, 1.f }, 0.1f);
+			break;
+		case CellState::HOUSE:
+			m_pInterface->Draw_SolidPolygon(cell.GetRectPoints().data(), 4, { 0.5f, 1.f, 0.5f }, 0.1f);
+			break;
+		case CellState::NOHOUSE:
 			m_pInterface->Draw_SolidPolygon(cell.GetRectPoints().data(), 4, { 1.f, 0.5f, 0.5f }, 0.1f);
+			break;
+		default:
+			break;
 		}
-		else
-		{
-			m_pInterface->Draw_Polygon(cell.GetRectPoints().data(), 4, { 1.f, 1.f, 1.f }, 0.2f);
-		}
+
+
+		m_pInterface->Draw_Polygon(cell.GetRectPoints().data(), 4, { 1.f, 1.f, 1.f }, 0.2f);
+
+
 	}
 
 
@@ -149,11 +191,13 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 	vector<HouseInfo> houses = GetHousesInFOV();
 
 
-	m_ZombieHordeInfo.Update(dt);
-	m_ExplorationGrid.Update(dt, aInfo);
+	m_pZombieHordeInfo->Update(dt);
+	m_pExplorationGrid->Update(dt, aInfo, m_pInterface);
 
 	EnemyInfo tempEnemy{};
 	ItemInfo tempItem{};
+
+
 
 
 	//record entities
@@ -163,7 +207,7 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 		{
 		case eEntityType::ENEMY:
 			m_pInterface->Enemy_GetInfo(ent, tempEnemy);
-			m_ZombieHordeInfo.AddEnemy(tempEnemy);
+			m_pZombieHordeInfo->AddEnemy(tempEnemy);
 			break;
 		case eEntityType::ITEM:
 			m_pInterface->Item_GetInfo(ent, tempItem);
@@ -179,16 +223,16 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 	//record houses
 	for (const HouseInfo& hi : houses)
 	{
-		m_KnownHouses.insert(hi);
+		m_pKnownHousesInfo->AddHouse(hi);
 	}
 
 
 
 	float distanceToAgent{};
 	//choose if the agent should run  and how much it should prioritize fleeing
-	if (m_ZombieHordeInfo.GetRecordedEnemies().size() > 0)
+	if (m_pZombieHordeInfo->GetRecordedEnemies().size() > 0)
 	{
-		float closestEnemyDistance{ ClosestEnemyDistance(m_ZombieHordeInfo.GetRecordedEnemies()) };
+		float closestEnemyDistance{ ClosestEnemyDistance(m_pZombieHordeInfo->GetRecordedEnemies()) };
 		if (closestEnemyDistance < m_RunRange && aInfo.Stamina > 5.f)
 		{
 			steering.RunMode = true;
@@ -205,8 +249,8 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 	}
 
 	//update behaviors
-	m_pZombieEvadeBehavior->SetZombieInfo(m_ZombieHordeInfo);
-	m_pAimBehavior->SetZombieInfo(m_ZombieHordeInfo);
+	m_pZombieEvadeBehavior->SetZombieInfo(m_pZombieHordeInfo);
+	m_pAimBehavior->SetZombieInfo(m_pZombieHordeInfo);
 	m_pSeekBehavior->SetTargetInfo(TargetInfo(m_pInterface->NavMesh_GetClosestPathPoint(m_Target), Elite::Vector2()));
 
 	SteeringOutput movementOutput = m_pEvasiveSeek->CalculateSteering(dt, aInfo);

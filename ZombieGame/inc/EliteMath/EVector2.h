@@ -55,6 +55,7 @@ namespace Elite
 			const auto revScale = 1.0f / scale;
 			x *= revScale; y *= revScale; return *this;
 		}
+		
 
 
 
@@ -132,6 +133,11 @@ namespace Elite
 			return *this * scale;
 		}
 	};
+
+	inline bool operator<(const Vector2& v1, const Vector2& v2)
+	{
+		return (v1.x < v2.x&& v1.y < v2.y);
+	}
 
 	//=== Global Vector Operators ===
 #pragma region GlobalVectorOperators

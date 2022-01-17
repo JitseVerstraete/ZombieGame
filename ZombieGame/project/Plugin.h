@@ -3,11 +3,15 @@
 #include "Exam_HelperStructs.h"
 #include "Steering\SteeringBehaviors.h"
 #include "Steering\CombinedSteeringBehaviors.h"
+#include "EliteDecisionMaking\EliteFiniteStateMachine\EFiniteStateMachine.h"
+
+#include "KnownHousesInfo.h"
 #include "ExplorationGrid.h"
 
 
+
+
 #include <map>
-#include <set>
 
 class IBaseInterface;
 class IExamInterface;
@@ -36,7 +40,17 @@ private:
 
 	float ClosestEnemyDistance(const std::vector<EnemyRecord>& enemies) const;
 
+	//blackboard
+	Elite::Blackboard* m_pBlackboard = nullptr;
 	
+	//state machine
+	std::vector<Elite::FSMState*> m_pStates;
+	Elite::FiniteStateMachine* m_pMovementStateMachine = nullptr;
+	//todo: add rotation state machine (radar/aiming)
+
+	//behavior tree
+
+
 	//behaviors
 	BlendedSteering* m_pEvasiveSeek = nullptr;
 
@@ -49,9 +63,9 @@ private:
 
 	//information
 	std::map<int, ItemInfo> m_KnownItems;
-	std::set<HouseInfo, less<HouseInfo>> m_KnownHouses;
-	ZombieHordeInfo m_ZombieHordeInfo;
-	ExplorationGrid m_ExplorationGrid;
+	KnownHousesInfo* m_pKnownHousesInfo = nullptr;
+	ZombieHordeInfo* m_pZombieHordeInfo = nullptr;
+	ExplorationGrid* m_pExplorationGrid = nullptr;
 
 	
 

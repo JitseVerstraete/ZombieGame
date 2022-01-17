@@ -107,7 +107,7 @@ struct HouseInfo
 	Elite::Vector2 Center;
 	Elite::Vector2 Size;
 };
-	inline bool operator<(const HouseInfo& first, const HouseInfo& second) { return first.Center.x < second.Center.x; }
+	//inline bool operator<(const HouseInfo& first, const HouseInfo& second) { return first.Center.x < second.Center.x; }
 
 
 

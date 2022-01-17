@@ -11,7 +11,7 @@ Elite::FiniteStateMachine::FiniteStateMachine(Elite::FSMState* startState, Elite
 
 Elite::FiniteStateMachine::~FiniteStateMachine()
 {
-    SAFE_DELETE(m_pBlackboard);
+    //SAFE_DELETE(m_pBlackboard);
 }
 
 void Elite::FiniteStateMachine::AddTransition(Elite::FSMState* startState, Elite::FSMState* toState, Elite::FSMTransition* transition)

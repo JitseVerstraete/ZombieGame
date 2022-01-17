@@ -10,6 +10,9 @@
     <ClCompile Include="EliteGeometry\EGeometry2DTypes.cpp" />
     <ClCompile Include="EliteDecisionMaking\EliteBehaviorTree\EBehaviorTree.cpp" />
     <ClCompile Include="EliteDecisionMaking\EliteFiniteStateMachine\EFiniteStateMachine.cpp" />
+    <ClCompile Include="StatesAndTransitions.cpp" />
+    <ClCompile Include="ItemsInfo.cpp" />
+    <ClCompile Include="KnownHousesInfo.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Plugin.h" />
@@ -25,5 +28,8 @@
     <ClInclude Include="EliteDecisionMaking\EliteFiniteStateMachine\EFiniteStateMachine.h" />
     <ClInclude Include="EliteDecisionMaking\EDecisionMaking.h" />
     <ClInclude Include="EliteDecisionMaking\EBlackboard.h" />
+    <ClInclude Include="StatesAndTransitions.h" />
+    <ClInclude Include="KnownHousesInfo.h" />
+    <ClInclude Include="ItemsInfo.h" />
   </ItemGroup>
 </Project>

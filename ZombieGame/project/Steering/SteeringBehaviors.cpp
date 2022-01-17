@@ -186,7 +186,7 @@ SteeringOutput EvadeZombies::CalculateSteering(float deltaT, const AgentInfo& ag
 	Elite::Vector2 targetForce{};
 	Elite::Vector2 tempForce{};
 
-	for (const EnemyRecord& enemy : m_ZombieInfo.GetRecordedEnemies())
+	for (const EnemyRecord& enemy : m_pZombieInfo->GetRecordedEnemies())
 	{
 		tempForce = agentInfo.Position - enemy.Position;
 
@@ -215,7 +215,7 @@ SteeringOutput AimZombie::CalculateSteering(float deltaT, const AgentInfo& agent
 	SteeringOutput output{};
 
 	//get all enemies in fov
-	std::vector<EnemyInfo> enemies = m_ZombieInfo.GetEnemiesInFov();
+	std::vector<EnemyInfo> enemies = m_pZombieInfo->GetEnemiesInFov();
 	
 	//select the fastest zombie in fov
 	auto it = max_element(enemies.begin(), enemies.end(), [](const EnemyInfo& e1, const EnemyInfo& e2) {return e1.LinearVelocity.SqrtMagnitude() < e2.LinearVelocity.SqrtMagnitude(); });

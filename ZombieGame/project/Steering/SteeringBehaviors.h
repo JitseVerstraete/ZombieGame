@@ -155,27 +155,29 @@ private:
 	float m_FleeRadius = 10.f;
 };
 
-
-
-
 #pragma endregion SimpleBehaviors
+
+
+
 
 #pragma region ZombieAIBehaviors
 
+//EVADE ZOMBIES
 class EvadeZombies :public ISteeringBehavior
 {
 public:
 	EvadeZombies() = default;
 	virtual ~EvadeZombies() = default;
 
-	void SetZombieInfo(const ZombieHordeInfo& info) { m_ZombieInfo = info; }
+	void SetZombieInfo(ZombieHordeInfo* info) { m_pZombieInfo = info; }
 	SteeringOutput CalculateSteering(float deltaT, const AgentInfo& agentInfo) override;
 
 private:
-	ZombieHordeInfo m_ZombieInfo;
+	ZombieHordeInfo* m_pZombieInfo;
 
 };
 
+//RADAR
 class Radar : public ISteeringBehavior
 {
 public:
@@ -185,17 +187,18 @@ public:
 	SteeringOutput CalculateSteering(float deltaT, const AgentInfo& agentInfo) override;
 };
 
+//AIM ZOMBIE
 class AimZombie : public Face
 {
 public:
 	AimZombie() = default;
 	virtual ~AimZombie() = default;
 
-	void SetZombieInfo(const ZombieHordeInfo& info) { m_ZombieInfo = info; }
+	void SetZombieInfo(ZombieHordeInfo* info) { m_pZombieInfo = info; }
 	SteeringOutput CalculateSteering(float deltaT, const AgentInfo& agentInfo) override;
 
 private:
-	ZombieHordeInfo m_ZombieInfo;
+	ZombieHordeInfo* m_pZombieInfo;
 
 };
 

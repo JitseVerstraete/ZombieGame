@@ -190,7 +190,10 @@
     <ClInclude Include="EliteGeometry\EGeometry2DTypes.h" />
     <ClInclude Include="EliteGeometry\EGeometry2DUtilities.h" />
     <ClInclude Include="ExplorationGrid.h" />
+    <ClInclude Include="KnownHousesInfo.h" />
+    <ClInclude Include="ItemsInfo.h" />
     <ClInclude Include="Plugin.h" />
+    <ClInclude Include="StatesAndTransitions.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="Steering\CombinedSteeringBehaviors.h" />
     <ClInclude Include="Steering\SteeringBehaviors.h" />
@@ -201,7 +204,10 @@
     <ClCompile Include="EliteDecisionMaking\EliteFiniteStateMachine\EFiniteStateMachine.cpp" />
     <ClCompile Include="EliteGeometry\EGeometry2DTypes.cpp" />
     <ClCompile Include="ExplorationGrid.cpp" />
+    <ClCompile Include="KnownHousesInfo.cpp" />
+    <ClCompile Include="ItemsInfo.cpp" />
     <ClCompile Include="Plugin.cpp" />
+    <ClCompile Include="StatesAndTransitions.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
