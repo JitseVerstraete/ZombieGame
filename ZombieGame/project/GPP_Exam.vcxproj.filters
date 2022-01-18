@@ -11,7 +11,7 @@
     <ClCompile Include="EliteDecisionMaking\EliteBehaviorTree\EBehaviorTree.cpp" />
     <ClCompile Include="EliteDecisionMaking\EliteFiniteStateMachine\EFiniteStateMachine.cpp" />
     <ClCompile Include="StatesAndTransitions.cpp" />
-    <ClCompile Include="ItemsInfo.cpp" />
+    <ClCompile Include="ItemsManager.cpp" />
     <ClCompile Include="KnownHousesInfo.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -30,6 +30,6 @@
     <ClInclude Include="EliteDecisionMaking\EBlackboard.h" />
     <ClInclude Include="StatesAndTransitions.h" />
     <ClInclude Include="KnownHousesInfo.h" />
-    <ClInclude Include="ItemsInfo.h" />
+    <ClInclude Include="ItemsManager.h" />
   </ItemGroup>
 </Project>

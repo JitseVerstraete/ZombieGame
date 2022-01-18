@@ -191,7 +191,7 @@
     <ClInclude Include="EliteGeometry\EGeometry2DUtilities.h" />
     <ClInclude Include="ExplorationGrid.h" />
     <ClInclude Include="KnownHousesInfo.h" />
-    <ClInclude Include="ItemsInfo.h" />
+    <ClInclude Include="ItemsManager.h" />
     <ClInclude Include="Plugin.h" />
     <ClInclude Include="StatesAndTransitions.h" />
     <ClInclude Include="stdafx.h" />
@@ -205,7 +205,7 @@
     <ClCompile Include="EliteGeometry\EGeometry2DTypes.cpp" />
     <ClCompile Include="ExplorationGrid.cpp" />
     <ClCompile Include="KnownHousesInfo.cpp" />
-    <ClCompile Include="ItemsInfo.cpp" />
+    <ClCompile Include="ItemsManager.cpp" />
     <ClCompile Include="Plugin.cpp" />
     <ClCompile Include="StatesAndTransitions.cpp" />
     <ClCompile Include="stdafx.cpp">

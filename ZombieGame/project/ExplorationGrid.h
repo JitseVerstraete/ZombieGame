@@ -2,18 +2,21 @@
 #include <Exam_HelperStructs.h>
 #include <IExamInterface.h>
 
+#include "KnownHousesInfo.h"
+
 
 enum class CellState
 {
 	UNKNOWN,
 	HOUSE,
-	NOHOUSE
+	NOHOUSE,
+	VISITED
 };
 
 
 struct Cell
 {
-
+	Cell() = default;
 	Cell(float left, float bottom, float width, float height);
 
 	std::vector<Elite::Vector2> GetRectPoints() const;
@@ -33,8 +36,12 @@ public:
 	ExplorationGrid() {};
 	ExplorationGrid(const Elite::Vector2& center, float width, float height, int rows, int cols);
 
-	void Update(float dt, const AgentInfo& aInfo, IExamInterface* pInterface);
+	void Update(float dt, IExamInterface* pInterface);
 	const Cell& GetRandomUnexploredCell() const;
+	const Cell& GetClosestHouseCell(const Elite::Vector2& agentPos) const;
+	void CheckCellsForHouseOverlap(const HouseInfo& pHouseinfo);
+
+	void FullSurroundingsScan(IExamInterface* pInterface);
 
 	const std::vector<Cell>& GetCells() const { return m_Cells; }
 

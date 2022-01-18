@@ -46,23 +46,22 @@ ExplorationGrid::ExplorationGrid(const Elite::Vector2& center, float width, floa
 
 }
 
-void ExplorationGrid::Update(float dt, const AgentInfo& aInfo, IExamInterface* pInterface)
+void ExplorationGrid::Update(float dt, IExamInterface* pInterface)
 {
-
+	AgentInfo aInfo{ pInterface->Agent_GetInfo() };
 	const float detectionRange{ 8.f };
 	Elite::Vector2 detectionCenter = aInfo.Position + Elite::OrientationToVector(aInfo.Orientation).GetNormalized() * (aInfo.FOV_Range - detectionRange);
 
 	for (auto& c : m_Cells)
 	{
-		Elite::Vector2 cellCenter = { c.boundingBox.bottomLeft.x + c.boundingBox.width / 2, c.boundingBox.bottomLeft.y + c.boundingBox.height / 2 };
+		Elite::Vector2 cellCenter = { c.GetCellCenter() };
 
 
 		//set the cell as explored if conditions are met
-		if (Elite::Distance(cellCenter, detectionCenter) < detectionRange || Elite::Distance(cellCenter, aInfo.Position) < aInfo.GrabRange)
+		if (Elite::Distance(cellCenter, aInfo.Position) < c.boundingBox.width / 3)
 		{
-			c.isExplored = true;
+			c.state = CellState::VISITED;
 		}
-
 	}
 
 	ScanSurroundings(pInterface);
@@ -77,31 +76,73 @@ const Cell& ExplorationGrid::GetRandomUnexploredCell() const
 	{
 		randomCellIndex = rand() % cellVectorSize;
 
-
 	} while (m_Cells[randomCellIndex].isExplored);
 
 	return m_Cells[randomCellIndex];
 }
 
-void ExplorationGrid::ScanSurroundings(IExamInterface* pInterface)
+const Cell& ExplorationGrid::GetClosestHouseCell(const Elite::Vector2& agentPos) const
 {
-	int tries{};
-	int nrScans{};
-	Elite::Vector2 pathPoint{};
 
-	//loop over all cells
-	for ( m_CurrentScanIndex; (nrScans < m_CellsScanPerFrame) && (tries < m_MaxCellScanAttempts); ++m_CurrentScanIndex)
+	auto it = std::find_if(m_Cells.begin(), m_Cells.end(), [](const Cell& c) {return c.state == CellState::HOUSE; });
+
+
+	if (it != m_Cells.end())
 	{
-		m_CurrentScanIndex %= m_Cells.size();
-		switch (m_Cells[m_CurrentScanIndex].state)
+		Cell toReturn = *it;
+
+		for (const auto& c : m_Cells)
+		{
+			if (c.state != CellState::HOUSE)
+				continue;
+
+			if ((Elite::Distance(agentPos, c.GetCellCenter()) * 0.9f) > Elite::Distance(agentPos, toReturn.GetCellCenter()))
+				continue;
+
+			toReturn = c;
+
+		}
+
+		return toReturn;
+	}
+
+	it = std::find_if(m_Cells.begin(), m_Cells.end(), [](const Cell& c) {return c.state == CellState::UNKNOWN; });
+	
+	if (it != m_Cells.end())
+	{
+		Cell toReturn = *it;
+
+		for (const auto& c : m_Cells)
+		{
+			if (c.state != CellState::UNKNOWN)
+				continue;
+
+			if ((Elite::Distance(agentPos, c.GetCellCenter()) * 0.9f) > Elite::Distance(agentPos, toReturn.GetCellCenter()))
+				continue;
+
+			toReturn = c;
+
+		}
+
+		return toReturn;
+	}
+
+}
+
+void ExplorationGrid::FullSurroundingsScan(IExamInterface* pInterface)
+{
+	std::cout << "Starting Surroundings Scan\n";
+	Elite::Vector2 pathPoint{};
+	for (auto& cell : m_Cells)
+	{
+		switch (cell.state)
 		{
 		case CellState::UNKNOWN:
 
-			nrScans++;
-			pathPoint = pInterface->NavMesh_GetClosestPathPoint(m_Cells[m_CurrentScanIndex].GetCellCenter()) ;
-			if (m_Cells[m_CurrentScanIndex].GetCellCenter() == pathPoint)
+			pathPoint = pInterface->NavMesh_GetClosestPathPoint(cell.GetCellCenter());
+			if (cell.GetCellCenter() == pathPoint)
 			{
-				m_Cells[m_CurrentScanIndex].state = CellState::NOHOUSE;
+				cell.state = CellState::NOHOUSE;
 			}
 			else
 			{
@@ -117,13 +158,75 @@ void ExplorationGrid::ScanSurroundings(IExamInterface* pInterface)
 		default:
 			break;
 		}
+	}
+
+}
+
+void ExplorationGrid::ScanSurroundings(IExamInterface* pInterface)
+{
+	int tries{};
+	int nrScans{};
+	Elite::Vector2 pathPoint{};
+
+	//loop over all cells
+	for (m_CurrentScanIndex; (nrScans < m_CellsScanPerFrame) && (tries < m_MaxCellScanAttempts); ++m_CurrentScanIndex)
+	{
+		m_CurrentScanIndex %= m_Cells.size();
+		switch (m_Cells[m_CurrentScanIndex].state)
+		{
+		case CellState::UNKNOWN:
+
+			nrScans++;
+			pathPoint = pInterface->NavMesh_GetClosestPathPoint(m_Cells[m_CurrentScanIndex].GetCellCenter());
+			if (m_Cells[m_CurrentScanIndex].GetCellCenter() == pathPoint)
+			{
+				m_Cells[m_CurrentScanIndex].state = CellState::NOHOUSE;
+			}
+			else
+			{
+				if (m_Cells[PositionToIndex(pathPoint)].state != CellState::VISITED)
+					m_Cells[PositionToIndex(pathPoint)].state = CellState::HOUSE;
+			}
+			break;
+		case CellState::HOUSE:
+			//do nothing
+			break;
+		case CellState::NOHOUSE:
+			//do nothing
+			break;
+		default:
+			break;
+		}
 
 
 		tries++;
 	}
+}
 
-	std::cout << tries << std::endl;
+void ExplorationGrid::CheckCellsForHouseOverlap(const HouseInfo& pHouseinfo)
+{
+	float cenX{ pHouseinfo.Center.x };
+	float cenY{ pHouseinfo.Center.y };
+	float w{ pHouseinfo.Size.x / 2 };
+	float h{ pHouseinfo.Size.y / 2 };
 
+
+	//check 9 points on the edge of the house and update their states
+
+	//corners
+	m_Cells[PositionToIndex(Elite::Vector2(cenX + w, cenY + h))].state = CellState::VISITED;
+	m_Cells[PositionToIndex(Elite::Vector2(cenX - w, cenY + h))].state = CellState::VISITED;
+	m_Cells[PositionToIndex(Elite::Vector2(cenX + w, cenY - h))].state = CellState::VISITED;
+	m_Cells[PositionToIndex(Elite::Vector2(cenX - w, cenY - h))].state = CellState::VISITED;
+
+	//edges
+	m_Cells[PositionToIndex(Elite::Vector2(cenX, cenY + h))].state = CellState::VISITED;
+	m_Cells[PositionToIndex(Elite::Vector2(cenX, cenY - h))].state = CellState::VISITED;
+	m_Cells[PositionToIndex(Elite::Vector2(cenX + w, cenY))].state = CellState::VISITED;
+	m_Cells[PositionToIndex(Elite::Vector2(cenX - w, cenY))].state = CellState::VISITED;
+
+	//center
+	m_Cells[PositionToIndex(Elite::Vector2(cenX, cenY))].state = CellState::VISITED;
 }
 
 int ExplorationGrid::PositionToIndex(const Elite::Vector2 pos) const

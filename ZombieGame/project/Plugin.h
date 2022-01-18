@@ -45,6 +45,7 @@ private:
 	
 	//state machine
 	std::vector<Elite::FSMState*> m_pStates;
+	std::vector<Elite::FSMState*> m_pTransitions;
 	Elite::FiniteStateMachine* m_pMovementStateMachine = nullptr;
 	//todo: add rotation state machine (radar/aiming)
 
@@ -79,7 +80,7 @@ private:
 	float m_DebugPrintTimer = 0.f;
 
 	//mouse target
-	Elite::Vector2 m_Target = {};
+	Elite::Vector2* m_pMovementTarget = new Elite::Vector2();
 
 };
 

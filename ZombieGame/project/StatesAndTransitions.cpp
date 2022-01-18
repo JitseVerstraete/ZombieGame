@@ -1,7 +1,15 @@
 #include "stdafx.h"
 #include "StatesAndTransitions.h"
-#include "KnownHousesInfo.h"
 
+
+#include "ExplorationGrid.h"
+#include "KnownHousesInfo.h"
+#include <IExamInterface.h>
+
+
+//================
+//STATES
+//================
 
 //EXPLORING
 
@@ -12,37 +20,93 @@ void Exploring::OnEnter(Elite::Blackboard* pBlackboard)
 
 void Exploring::OnExit(Elite::Blackboard* pBlackboard)
 {
-	std::cout << "Exit Exploring State\n";
+
 }
 
 void Exploring::Update(Elite::Blackboard* pBlackboard, float dt)
 {
-	std::cout << "Update Exploring State\n";
+	//data needed
+	ExplorationGrid* pExplorationGrid{};
+	IExamInterface* pInterface{};
+	Elite::Vector2* pTargetPoint{};
+
+	//get data from blackboard
+	pBlackboard->GetData("ExplorationGrid", pExplorationGrid);
+	pBlackboard->GetData("Interface", pInterface);
+	pBlackboard->GetData("TargetPoint", pTargetPoint);
+	
+	
+	Elite::Vector2 agentPos{ pInterface->Agent_GetInfo().Position };
+	Elite::Vector2 newTargetPoint{ pExplorationGrid->GetClosestHouseCell(agentPos).GetCellCenter() };
+
+	//*pTargetPoint = newTargetPoint;
 }
 
 
 //GO TO HOUSE
 
-void GoToHouse::OnEnter(Elite::Blackboard* pBlackboard)
+void HouseSeek::OnEnter(Elite::Blackboard* pBlackboard)
 {
 	std::cout << "Enter GoToHouse State\n";
 }
 
 
-void GoToHouse::OnExit(Elite::Blackboard* pBlackboard)
+void HouseSeek::OnExit(Elite::Blackboard* pBlackboard)
 {
-	std::cout << "Exit GoToHouse State\n";
+
 }
 
-void GoToHouse::Update(Elite::Blackboard* pBlackboard, float dt)
+void HouseSeek::Update(Elite::Blackboard* pBlackboard, float dt)
 {
-	std::cout << "Update GoToHouse State\n";
+	//data needed
+	KnownHousesInfo* pKnownHouses{};
+	IExamInterface* pInterface{};
+	Elite::Vector2* pTargetPoint{};
+
+	//get data from blackboard
+	pBlackboard->GetData("KnownHouses", pKnownHouses);
+	pBlackboard->GetData("Interface", pInterface);
+	pBlackboard->GetData("TargetPoint", pTargetPoint);
+
+	Elite::Vector2 agentPos{ pInterface->Agent_GetInfo().Position };
+	Elite::Vector2 newTargetPoint{ pKnownHouses->GetClosestUnexploredHouse(agentPos).Center };
+
+	//*pTargetPoint = newTargetPoint;
 }
 
-bool UnexploredHouseFound::ToTransition(Elite::Blackboard* pBlackboard) const
+//GO TO LOOT
+void LootSeek::OnEnter(Elite::Blackboard* pBlackboard)
+{
+}
+
+void LootSeek::OnExit(Elite::Blackboard* pBlackboard)
+{
+}
+
+void LootSeek::Update(Elite::Blackboard* pBlackboard, float dt)
+{
+}
+
+//================
+//TRANSITIONS
+//================
+
+bool ToHouseSeek::ToTransition(Elite::Blackboard* pBlackboard) const
 {
 	//using the blackboard, check if there is an unexplored house known
 	KnownHousesInfo* pHousesInfo;
 	pBlackboard->GetData("KnownHouses", pHousesInfo);
-	return (pHousesInfo->GetNrHouses() > 0);
+	return (pHousesInfo->GetNrUnexploredHouses() > 0);
+}
+
+bool ToExploring::ToTransition(Elite::Blackboard* pBlackboard) const
+{
+	KnownHousesInfo* pHousesInfo;
+	pBlackboard->GetData("KnownHouses", pHousesInfo);
+	return (pHousesInfo->GetNrUnexploredHouses() <= 0);
+}
+
+bool ToLootSeek::ToTransition(Elite::Blackboard* pBlackboard) const
+{
+	return false;
 }

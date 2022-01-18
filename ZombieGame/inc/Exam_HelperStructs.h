@@ -56,6 +56,7 @@ enum class eEntityType
 
 	//@END
 	_LAST = PURGEZONE
+
 };
 
 enum class eItemType
@@ -106,8 +107,10 @@ struct HouseInfo
 {
 	Elite::Vector2 Center;
 	Elite::Vector2 Size;
+
+	HouseInfo& operator=(const HouseInfo& hi) { Center = hi.Center; Size = hi.Size; return *this; }
 };
-	//inline bool operator<(const HouseInfo& first, const HouseInfo& second) { return first.Center.x < second.Center.x; }
+
 
 
 
@@ -144,6 +147,9 @@ struct EntityInfo
 	Elite::Vector2 Location;
 
 	int EntityHash = 0;
+
+	bool operator<(const EntityInfo& rhs) { return EntityHash < rhs.EntityHash; }
+
 };
 
 struct WorldInfo

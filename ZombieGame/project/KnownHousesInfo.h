@@ -1,14 +1,24 @@
 #pragma once
 #include <Exam_HelperStructs.h>
-#include <map>
+#include <IExamInterface.h>
+#include <vector>
 
-inline bool operator<(const Elite::Vector2& v1, const Elite::Vector2& v2) { return (v1.x < v2.x&& v1.y < v2.y); }
+#undef min
+
+inline bool operator<(const HouseInfo& h1, const HouseInfo& h2){ return (h1.Center.x < h2.Center.x || h1.Center.y < h2.Center.y); }
 
 struct HouseRecord
 {
 	HouseInfo houseInfo;
-	bool explored;
+	bool explored = false;
+
+	bool operator<(const HouseInfo& rhs)
+	{
+		return houseInfo < rhs;
+	}
 };
+
+
 
 class KnownHousesInfo
 {
@@ -16,13 +26,17 @@ public:
 	KnownHousesInfo() = default;
 	~KnownHousesInfo() = default;
 
+
+	void Update(float dt, IExamInterface* pInterface);
+
 	void AddHouse(const HouseInfo& house);
-	HouseInfo GetClosestUnexploredHouse(const Elite::Vector2& agentPos)const;
+	HouseInfo GetClosestUnexploredHouse(const Elite::Vector2& agentPos);
+	const vector<HouseRecord>& GetKnownHouses()const;
+
 	int GetNrHouses() const { return m_KnownHouses.size(); }
-	int GetNrUnexploredHouses() const { std::count_if(m_KnownHouses.begin(), m_KnownHouses.end(), [](const auto& h) {return h.second.explored; }); }
+	int GetNrUnexploredHouses() const { return std::count_if(m_KnownHouses.begin(), m_KnownHouses.end(), [](const auto& h) {return !h.explored; }); }
 
 
 private:
-	map <Elite::Vector2, HouseRecord> m_KnownHouses;
+	vector<HouseRecord> m_KnownHouses;
 };
-
