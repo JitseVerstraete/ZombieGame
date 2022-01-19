@@ -7,11 +7,10 @@
 
 #include "KnownHousesInfo.h"
 #include "ExplorationGrid.h"
+#include "ItemsManager.h"
+#include "ZombieInfo.h"
 
 
-
-
-#include <map>
 
 class IBaseInterface;
 class IExamInterface;
@@ -63,10 +62,10 @@ private:
 
 
 	//information
-	std::map<int, ItemInfo> m_KnownItems;
-	KnownHousesInfo* m_pKnownHousesInfo = nullptr;
-	ZombieHordeInfo* m_pZombieHordeInfo = nullptr;
-	ExplorationGrid* m_pExplorationGrid = nullptr;
+	ItemsManager*		m_pItemsManager = nullptr;
+	KnownHousesInfo*	m_pKnownHousesInfo = nullptr;
+	ZombieHordeInfo*	m_pZombieHordeInfo = nullptr;
+	ExplorationGrid*	m_pExplorationGrid = nullptr;
 
 	
 

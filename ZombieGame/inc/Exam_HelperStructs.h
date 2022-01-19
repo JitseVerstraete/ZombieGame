@@ -148,7 +148,7 @@ struct EntityInfo
 
 	int EntityHash = 0;
 
-	bool operator<(const EntityInfo& rhs) { return EntityHash < rhs.EntityHash; }
+	inline bool operator<(const EntityInfo& rhs) const { return EntityHash < rhs.EntityHash; }
 
 };
 

@@ -3,7 +3,7 @@
 #include "IExamInterface.h"
 #include "StatesAndTransitions.h"
 
-#include <set>
+#include <iomanip>
 
 
 
@@ -27,9 +27,10 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 
 
 	auto world = m_pInterface->World_GetInfo();
-	m_pExplorationGrid = new ExplorationGrid(world.Center, world.Dimensions.x / 2, world.Dimensions.y / 2, 11, 11);
-	m_pZombieHordeInfo = new ZombieHordeInfo();
-	m_pKnownHousesInfo = new KnownHousesInfo();
+	m_pExplorationGrid =	new ExplorationGrid(world.Center, world.Dimensions.x / 2, world.Dimensions.y / 2, 11, 11);
+	m_pZombieHordeInfo =	new ZombieHordeInfo();
+	m_pKnownHousesInfo =	new KnownHousesInfo();
+	m_pItemsManager =		new ItemsManager();
 	//m_Target = m_ExplorationGrid.GetRandomUnexploredCell().GetCellCenter();
 
 
@@ -102,6 +103,9 @@ void Plugin::DllShutdown()
 //Called only once, during initialization
 void Plugin::InitGameDebugParams(GameDebugParams& params)
 {
+	//debug
+	params.PrintDebugMessages = false;
+
 	//camera
 	params.AutoFollowCam = true;
 
@@ -157,9 +161,9 @@ void Plugin::Update(float dt)
 	{
 		m_DebugPrintTimer -= m_DebugPrintInterval;
 
-		std::cout << "---Debug print record---\n";
-		std::cout << "Number of houses recorded(unexplored/total): " << m_pKnownHousesInfo->GetNrUnexploredHouses() << "/" << m_pKnownHousesInfo->GetNrHouses() << std::endl;
-		std::cout << "Number of items recorded: " << m_KnownItems.size() << std::endl;
+		std::cout << "---Debug print record---\n" << std::left;
+		std::cout << setw(50) << "Number of houses recorded (unexplored): "  << m_pKnownHousesInfo->GetNrHouses() << " (" << m_pKnownHousesInfo->GetNrUnexploredHouses() << ") " << std::endl;
+		std::cout << setw(50) <<  "Number of items recorded (pistols/medkits/foods): " << m_pItemsManager->GetNrItems() << " (" << m_pItemsManager->GetNrPistols() << "/" << m_pItemsManager->GetNrMedkits() << "/" << m_pItemsManager->GetNrFoods() << ") " << std::endl;
 		std::cout << std::endl;
 
 	}
@@ -222,14 +226,6 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 	vector<EntityInfo> entities = GetEntitiesInFOV();
 	vector<HouseInfo> houses = GetHousesInFOV();
 
-	//update information structures
-	m_pZombieHordeInfo->Update(dt);
-	m_pExplorationGrid->Update(dt, m_pInterface);
-	m_pKnownHousesInfo->Update(dt, m_pInterface);
-
-	//update state machine
-	m_pMovementStateMachine->Update(dt);
-
 
 #pragma region RecordData
 	
@@ -244,15 +240,11 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 		case eEntityType::ENEMY:
 			m_pInterface->Enemy_GetInfo(ent, tempEnemy);
 			m_pZombieHordeInfo->AddEnemy(tempEnemy);
+
 			break;
 		case eEntityType::ITEM:
 			m_pInterface->Item_GetInfo(ent, tempItem);
-			m_KnownItems.insert(std::pair<int, ItemInfo>(tempItem.ItemHash, tempItem));
-
-
-			m_pInterface->Item_Grab(ent, tempItem);
-			m_pInterface->Inventory_AddItem(0, tempItem);
-			cout << ent.EntityHash << "   " << tempItem.ItemHash << endl;
+			m_pItemsManager->AddItem(ent, tempItem.Type);
 
 			break;
 		case eEntityType::PURGEZONE:
@@ -270,6 +262,23 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 	}
 
 #pragma endregion RecordData
+
+
+#pragma region UpdateStructures
+
+	//update information structures
+	m_pZombieHordeInfo->Update(dt);
+	m_pExplorationGrid->Update(dt, m_pInterface);
+	m_pKnownHousesInfo->Update(dt, m_pInterface);
+	m_pItemsManager->Update(dt, m_pInterface);
+
+	//update state machine
+	m_pMovementStateMachine->Update(dt);
+
+#pragma endregion UpdateStructures
+
+
+#pragma region behaviorWeights
 
 	float distanceToAgent{};
 	//choose if the agent should run  and how much it should prioritize fleeing
@@ -291,6 +300,10 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 		m_pEvasiveSeek->SetBehaviorWeight(1, 0.f);
 	}
 
+
+#pragma endregion behaviorWeights
+
+
 	//update behaviors
 	m_pZombieEvadeBehavior->SetZombieInfo(m_pZombieHordeInfo);
 	m_pAimBehavior->SetZombieInfo(m_pZombieHordeInfo);
@@ -309,7 +322,7 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 
 
 	//comment this line if you want to test rotation behavior
-	//steering.AutoOrient = true;
+	steering.AutoOrient = true;
 
 	return steering;
 }
