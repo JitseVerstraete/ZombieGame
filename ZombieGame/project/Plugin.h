@@ -44,7 +44,7 @@ private:
 	
 	//state machine
 	std::vector<Elite::FSMState*> m_pStates;
-	std::vector<Elite::FSMState*> m_pTransitions;
+	std::vector<Elite::FSMTransition*> m_pTransitions;
 	Elite::FiniteStateMachine* m_pMovementStateMachine = nullptr;
 	//todo: add rotation state machine (radar/aiming)
 
@@ -75,7 +75,7 @@ private:
 	const float m_RunRange = 8.f;
 
 	//debug print
-	const float m_DebugPrintInterval = 2.f;
+	const float m_DebugPrintInterval = 0.5;
 	float m_DebugPrintTimer = 0.f;
 
 	//mouse target

@@ -30,6 +30,8 @@ public:
 	virtual void Update(Elite::Blackboard* pBlackboard, float dt) override;
 };
 
+
+
 class LootSeek : public Elite::FSMState
 {
 public:
@@ -46,19 +48,28 @@ public:
 //TRANSITIONS
 //-----------
 
-class ToHouseSeek : public Elite::FSMTransition
+class ExploreToHouseSeek : public Elite::FSMTransition
 {
 public:
-	ToHouseSeek() = default;
-	virtual ~ToHouseSeek() = default;
+	ExploreToHouseSeek() = default;
+	virtual ~ExploreToHouseSeek() = default;
 	virtual bool ToTransition(Elite::Blackboard* pBlackboard) const;
 };
 
-class ToExploring : public Elite::FSMTransition
+class LootSeekToHouseSeek : public Elite::FSMTransition
 {
 public:
-	ToExploring() = default;
-	virtual ~ToExploring() = default;
+	LootSeekToHouseSeek() = default;
+	virtual ~LootSeekToHouseSeek() = default;
+	virtual bool ToTransition(Elite::Blackboard* pBlackboard) const;
+};
+
+
+class HouseSeekToExploring : public Elite::FSMTransition
+{
+public:
+	HouseSeekToExploring() = default;
+	virtual ~HouseSeekToExploring() = default;
 	virtual bool ToTransition(Elite::Blackboard * pBlackboard) const;
 };
 

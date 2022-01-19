@@ -31,30 +31,48 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 	m_pZombieHordeInfo =	new ZombieHordeInfo();
 	m_pKnownHousesInfo =	new KnownHousesInfo();
 	m_pItemsManager =		new ItemsManager();
-	//m_Target = m_ExplorationGrid.GetRandomUnexploredCell().GetCellCenter();
+	
 
+
+
+
+	//SETUP FSM
 
 	//setup blackboard
 	m_pBlackboard = new Elite::Blackboard();
 	m_pBlackboard->AddData("KnownHouses", m_pKnownHousesInfo);
 	m_pBlackboard->AddData("ZombieHorde", m_pZombieHordeInfo);
 	m_pBlackboard->AddData("ExplorationGrid", m_pExplorationGrid);
+	m_pBlackboard->AddData("ItemsManager", m_pItemsManager);
 	m_pBlackboard->AddData("TargetPoint", m_pMovementTarget);
 	m_pBlackboard->AddData("Interface", m_pInterface);
 
-
-	//setup FSM
+	//create states
 	Elite::FSMState* pExploreState = new Exploring();
 	Elite::FSMState* pHouseSeekState = new HouseSeek();
+	Elite::FSMState* pLootSeekState = new LootSeek();
 	m_pStates.push_back(pExploreState);
 	m_pStates.push_back(pHouseSeekState);
+	m_pStates.push_back(pLootSeekState);
 
-	Elite::FSMTransition* pToExploring = new ToExploring();
-	Elite::FSMTransition* pToHouseSeek = new ToHouseSeek();
+	//create transitions
+	Elite::FSMTransition* pHouseSeekToExploring = new HouseSeekToExploring();
+	Elite::FSMTransition* pExploreToHouseSeek = new ExploreToHouseSeek();
+	Elite::FSMTransition* pToLootSeek = new ToLootSeek();
+	Elite::FSMTransition* pLootSeekToHouseSeek = new LootSeekToHouseSeek();
+	m_pTransitions.push_back(pHouseSeekToExploring);
+	m_pTransitions.push_back(pExploreToHouseSeek);
+	m_pTransitions.push_back(pToLootSeek);
+	m_pTransitions.push_back(pLootSeekToHouseSeek);
 	
-	m_pMovementStateMachine = new Elite::FiniteStateMachine(pExploreState, m_pBlackboard);
-	m_pMovementStateMachine->AddTransition(pExploreState, pHouseSeekState, pToHouseSeek);
-	m_pMovementStateMachine->AddTransition(pHouseSeekState, pExploreState, pToExploring);
+	//add transitions to the fsm
+	m_pMovementStateMachine = new Elite::FiniteStateMachine(pExploreState, m_pBlackboard); //make state machine and give it a initial state
+	m_pMovementStateMachine->AddTransition(pExploreState, pHouseSeekState, pExploreToHouseSeek); //from EXPLORE to HOUSE SEEK
+	m_pMovementStateMachine->AddTransition(pHouseSeekState, pExploreState, pHouseSeekToExploring); //from HOUSE SEEK to EXPLORE
+	m_pMovementStateMachine->AddTransition(pExploreState, pLootSeekState, pToLootSeek); //from EXPLORE to LOOT SEEK 
+	m_pMovementStateMachine->AddTransition(pHouseSeekState, pLootSeekState, pToLootSeek); //from HOUSE SEEK to LOOT SEEK
+	m_pMovementStateMachine->AddTransition(pLootSeekState, pHouseSeekState, pLootSeekToHouseSeek); //from LOOT SEEK to HOUSE SEEK
+	
 
 	//scan surroundings before the game starts
 	m_pExplorationGrid->FullSurroundingsScan(m_pInterface);
@@ -114,7 +132,7 @@ void Plugin::InitGameDebugParams(GameDebugParams& params)
 
 	//enemies
 	params.SpawnEnemies = false; //Do you want to spawn enemies? (Default = true)
-	params.EnemyCount = 0; //How many enemies? (Default = 20)
+	params.EnemyCount = 20; //How many enemies? (Default = 20)
 
 	//items
 	params.ItemCount = 40; //default 40
@@ -161,13 +179,17 @@ void Plugin::Update(float dt)
 	{
 		m_DebugPrintTimer -= m_DebugPrintInterval;
 
-		std::cout << "---Debug print record---\n" << std::left;
-		std::cout << setw(50) << "Number of houses recorded (unexplored): "  << m_pKnownHousesInfo->GetNrHouses() << " (" << m_pKnownHousesInfo->GetNrUnexploredHouses() << ") " << std::endl;
+		//std::cout << "---Debug print record---\n" << std::left;
+		//std::cout << setw(50) << "Number of houses recorded (unexplored): "  << m_pKnownHousesInfo->GetNrHouses() << " (" << m_pKnownHousesInfo->GetNrUnexploredHouses() << ") " << std::endl;
 		std::cout << setw(50) <<  "Number of items recorded (pistols/medkits/foods): " << m_pItemsManager->GetNrItems() << " (" << m_pItemsManager->GetNrPistols() << "/" << m_pItemsManager->GetNrMedkits() << "/" << m_pItemsManager->GetNrFoods() << ") " << std::endl;
 		std::cout << std::endl;
 
 	}
 	
+	
+
+
+
 
 	//draw recorded enemy positions
 	for (const auto& e : m_pZombieHordeInfo->GetRecordedEnemies())
@@ -266,14 +288,14 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 
 #pragma region UpdateStructures
 
+	//update state machine
+	m_pMovementStateMachine->Update(dt);
+
 	//update information structures
 	m_pZombieHordeInfo->Update(dt);
 	m_pExplorationGrid->Update(dt, m_pInterface);
 	m_pKnownHousesInfo->Update(dt, m_pInterface);
 	m_pItemsManager->Update(dt, m_pInterface);
-
-	//update state machine
-	m_pMovementStateMachine->Update(dt);
 
 #pragma endregion UpdateStructures
 
@@ -317,8 +339,6 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 
 	steering.AngularVelocity = m_pRadarBehavior->CalculateSteering(dt, aInfo).AngularVelocity;
 	//steering.AngularVelocity = m_pAimBehavior->CalculateSteering(dt, aInfo).AngularVelocity;
-
-
 
 
 	//comment this line if you want to test rotation behavior
