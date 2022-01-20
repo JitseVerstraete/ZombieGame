@@ -6,7 +6,6 @@ struct SteeringPlugin_Output
 	float AngularVelocity = 0.f;
 	bool AutoOrient = false;
 	bool RunMode = false;
-
 };
 
 struct PluginInfo
@@ -33,7 +32,7 @@ struct GameDebugParams //Debuggin Purposes only (Ignored during release build)
 	bool GodMode = false; //Use GodMode? (Invincible)
 	bool IgnoreEnergy = false; //Ignore energy depletion
 	bool AutoFollowCam = false; //Auto follow the player
-	bool RenderUI = false; //Render Player UI (Parameters)c
+	bool RenderUI = false; //Render Player UI (Parameters)
 	bool AutoGrabClosestItem = false; //Auto Grab closest item (Item_Grab)
 	string LevelFile = "GameLevel.gppl"; //Level to load?
 	int Seed = 1234; //Seed for random generator
@@ -56,7 +55,6 @@ enum class eEntityType
 
 	//@END
 	_LAST = PURGEZONE
-
 };
 
 enum class eItemType
@@ -107,12 +105,7 @@ struct HouseInfo
 {
 	Elite::Vector2 Center;
 	Elite::Vector2 Size;
-
-	HouseInfo& operator=(const HouseInfo& hi) { Center = hi.Center; Size = hi.Size; return *this; }
 };
-
-
-
 
 struct EnemyInfo
 {
@@ -147,9 +140,6 @@ struct EntityInfo
 	Elite::Vector2 Location;
 
 	int EntityHash = 0;
-
-	inline bool operator<(const EntityInfo& rhs) const { return EntityHash < rhs.EntityHash; }
-
 };
 
 struct WorldInfo

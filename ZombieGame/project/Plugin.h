@@ -75,7 +75,7 @@ private:
 	const float m_RunRange = 8.f;
 
 	//debug print
-	const float m_DebugPrintInterval = 0.5;
+	const float m_DebugPrintInterval = 2.f;
 	float m_DebugPrintTimer = 0.f;
 
 	//mouse target

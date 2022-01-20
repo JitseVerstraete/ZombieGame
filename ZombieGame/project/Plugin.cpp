@@ -146,7 +146,7 @@ void Plugin::InitGameDebugParams(GameDebugParams& params)
 	params.IgnoreEnergy = false;
 	
 	//grabItems
-	params.AutoGrabClosestItem = true; //A call to Item_Grab(...) returns the closest item that can be grabbed. (EntityInfo argument is ignored)
+	params.AutoGrabClosestItem = false; //A call to Item_Grab(...) returns the closest item that can be grabbed. (EntityInfo argument is ignored)
 
 	//dificulty
 	params.StartingDifficultyStage = 0;
@@ -179,8 +179,8 @@ void Plugin::Update(float dt)
 	{
 		m_DebugPrintTimer -= m_DebugPrintInterval;
 
-		//std::cout << "---Debug print record---\n" << std::left;
-		//std::cout << setw(50) << "Number of houses recorded (unexplored): "  << m_pKnownHousesInfo->GetNrHouses() << " (" << m_pKnownHousesInfo->GetNrUnexploredHouses() << ") " << std::endl;
+		std::cout << "---Debug print record---\n" << std::left;
+		std::cout << setw(50) << "Number of houses recorded (unexplored): "  << m_pKnownHousesInfo->GetNrHouses() << " (" << m_pKnownHousesInfo->GetNrUnexploredHouses() << ") " << std::endl;
 		std::cout << setw(50) <<  "Number of items recorded (pistols/medkits/foods): " << m_pItemsManager->GetNrItems() << " (" << m_pItemsManager->GetNrPistols() << "/" << m_pItemsManager->GetNrMedkits() << "/" << m_pItemsManager->GetNrFoods() << ") " << std::endl;
 		std::cout << std::endl;
 
@@ -265,8 +265,7 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 
 			break;
 		case eEntityType::ITEM:
-			m_pInterface->Item_GetInfo(ent, tempItem);
-			m_pItemsManager->AddItem(ent, tempItem.Type);
+			m_pItemsManager->RecordItem(ent, m_pInterface);
 
 			break;
 		case eEntityType::PURGEZONE:

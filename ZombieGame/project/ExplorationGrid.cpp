@@ -58,7 +58,7 @@ void ExplorationGrid::Update(float dt, IExamInterface* pInterface)
 
 
 		//set the cell as explored if conditions are met
-		if (Elite::Distance(cellCenter, aInfo.Position) < c.boundingBox.width / 3)
+		if (Elite::Distance(cellCenter, aInfo.Position) < c.boundingBox.width / 2)
 		{
 			c.state = CellState::VISITED;
 		}

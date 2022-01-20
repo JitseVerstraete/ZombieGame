@@ -87,6 +87,7 @@ void LootSeek::OnExit(Elite::Blackboard* pBlackboard)
 
 void LootSeek::Update(Elite::Blackboard* pBlackboard, float dt)
 {
+	
 	ItemsManager* pItemsManager{};
 	IExamInterface* pInterface{};
 	Elite::Vector2* pTargetPoint{};
@@ -104,7 +105,7 @@ void LootSeek::Update(Elite::Blackboard* pBlackboard, float dt)
 
 	for (int i{}; i < 3; ++i)
 	{
-		if (pItemsManager->GetClosestKnownItemPosOfType(eItemType(i), aInfo.Position, tempPos))
+		if (pItemsManager->GetSlotForItemType(eItemType(i), pInterface) >=0 && pItemsManager->GetClosestKnownItemPosOfType(eItemType(i), aInfo.Position, tempPos))
 		{
 			if (Elite::DistanceSquared(aInfo.Position, tempPos) < Elite::DistanceSquared(aInfo.Position, newTarget) || !itemFound)
 			{
@@ -122,6 +123,7 @@ void LootSeek::Update(Elite::Blackboard* pBlackboard, float dt)
 	{
 		*pTargetPoint = aInfo.Position;
 	}
+	
 }
 
 //================
