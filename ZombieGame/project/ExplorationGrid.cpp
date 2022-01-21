@@ -58,7 +58,7 @@ void ExplorationGrid::Update(float dt, IExamInterface* pInterface)
 
 
 		//set the cell as explored if conditions are met
-		if (Elite::Distance(cellCenter, aInfo.Position) < c.boundingBox.width / 2)
+		if (Elite::Distance(cellCenter, aInfo.Position) < c.boundingBox.width / 3)
 		{
 			c.state = CellState::VISITED;
 		}
@@ -83,13 +83,49 @@ const Cell& ExplorationGrid::GetRandomUnexploredCell() const
 
 const Cell& ExplorationGrid::GetClosestHouseCell(const Elite::Vector2& agentPos) const
 {
+	Cell toReturn{};
+	float distance{FLT_MAX};
+	bool itemFound{false};
+	
 
+	//check the house cells
+	for (const Cell& c : m_Cells)
+	{
+		if (c.state == CellState::HOUSE && Elite::Distance(c.GetCellCenter(), agentPos) < distance)
+		{
+			distance = Elite::Distance(c.GetCellCenter(), agentPos);
+			toReturn = c;
+			itemFound = true;
+		}
+	}
+
+	if (itemFound)
+		return toReturn;
+
+	for (const Cell& c : m_Cells)
+	{
+		if (c.state == CellState::UNKNOWN && Elite::Distance(c.GetCellCenter(), agentPos) < distance)
+		{
+			distance = Elite::Distance(c.GetCellCenter(), agentPos);
+			toReturn = c;
+			itemFound = true;
+		}
+	}
+
+	return toReturn;
+	
+
+
+
+
+
+	/*
 	auto it = std::find_if(m_Cells.begin(), m_Cells.end(), [](const Cell& c) {return c.state == CellState::HOUSE; });
 
 
 	if (it != m_Cells.end())
 	{
-		Cell toReturn = *it;
+		toReturn = *it;
 
 		for (const auto& c : m_Cells)
 		{
@@ -107,10 +143,10 @@ const Cell& ExplorationGrid::GetClosestHouseCell(const Elite::Vector2& agentPos)
 	}
 
 	it = std::find_if(m_Cells.begin(), m_Cells.end(), [](const Cell& c) {return c.state == CellState::UNKNOWN; });
-	
+
 	if (it != m_Cells.end())
 	{
-		Cell toReturn = *it;
+		toReturn = *it;
 
 		for (const auto& c : m_Cells)
 		{
@@ -126,6 +162,8 @@ const Cell& ExplorationGrid::GetClosestHouseCell(const Elite::Vector2& agentPos)
 
 		return toReturn;
 	}
+	*/
+
 
 }
 

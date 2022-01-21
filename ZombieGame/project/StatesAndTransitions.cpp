@@ -6,7 +6,12 @@
 #include "KnownHousesInfo.h"
 #include "ItemsManager.h"
 #include <IExamInterface.h>
+#include "Steering\SteeringBehaviors.h"
 
+#include <math.h>
+
+
+#pragma region Movement
 
 //================
 //STATES
@@ -16,7 +21,7 @@
 
 void Exploring::OnEnter(Elite::Blackboard* pBlackboard)
 {
-	std::cout << "Enter Exploring State\n";
+	std::cout << "EXPLORE STATE\n";
 }
 
 void Exploring::OnExit(Elite::Blackboard* pBlackboard)
@@ -35,9 +40,11 @@ void Exploring::Update(Elite::Blackboard* pBlackboard, float dt)
 	pBlackboard->GetData("ExplorationGrid", pExplorationGrid);
 	pBlackboard->GetData("Interface", pInterface);
 	pBlackboard->GetData("TargetPoint", pTargetPoint);
+
 	
-	
+
 	Elite::Vector2 agentPos{ pInterface->Agent_GetInfo().Position };
+
 	Elite::Vector2 newTargetPoint{ pExplorationGrid->GetClosestHouseCell(agentPos).GetCellCenter() };
 
 	*pTargetPoint = newTargetPoint;
@@ -48,7 +55,7 @@ void Exploring::Update(Elite::Blackboard* pBlackboard, float dt)
 
 void HouseSeek::OnEnter(Elite::Blackboard* pBlackboard)
 {
-	std::cout << "Enter HouseSeek State\n";
+	std::cout << "HOUSE SEEK STATE\n";
 }
 
 
@@ -78,7 +85,7 @@ void HouseSeek::Update(Elite::Blackboard* pBlackboard, float dt)
 //GO TO LOOT
 void LootSeek::OnEnter(Elite::Blackboard* pBlackboard)
 {
-	std::cout << "Enter LootSeek State\n";
+	std::cout << "LOOT SEEK STATE\n";
 }
 
 void LootSeek::OnExit(Elite::Blackboard* pBlackboard)
@@ -87,7 +94,7 @@ void LootSeek::OnExit(Elite::Blackboard* pBlackboard)
 
 void LootSeek::Update(Elite::Blackboard* pBlackboard, float dt)
 {
-	
+
 	ItemsManager* pItemsManager{};
 	IExamInterface* pInterface{};
 	Elite::Vector2* pTargetPoint{};
@@ -105,7 +112,7 @@ void LootSeek::Update(Elite::Blackboard* pBlackboard, float dt)
 
 	for (int i{}; i < 3; ++i)
 	{
-		if (pItemsManager->GetSlotForItemType(eItemType(i), pInterface) >=0 && pItemsManager->GetClosestKnownItemPosOfType(eItemType(i), aInfo.Position, tempPos))
+		if (pItemsManager->GetOpenSlotForItemType(eItemType(i)) >= 0 && pItemsManager->GetClosestKnownItemPosOfType(eItemType(i), aInfo.Position, tempPos))
 		{
 			if (Elite::DistanceSquared(aInfo.Position, tempPos) < Elite::DistanceSquared(aInfo.Position, newTarget) || !itemFound)
 			{
@@ -123,7 +130,7 @@ void LootSeek::Update(Elite::Blackboard* pBlackboard, float dt)
 	{
 		*pTargetPoint = aInfo.Position;
 	}
-	
+
 }
 
 //================
@@ -159,17 +166,189 @@ bool ToLootSeek::ToTransition(Elite::Blackboard* pBlackboard) const
 	pBlackboard->GetData("Interface", pInterface);
 
 	//return true if you know about a pistol and there is room for it 
-	if (pItemsManager->GetNrPistols() > 0 && pItemsManager->GetSlotForItemType(eItemType::PISTOL, pInterface) >= 0)
+	if (pItemsManager->GetNrPistols() > 0 && pItemsManager->GetOpenSlotForItemType(eItemType::PISTOL) >= 0)
 		return true;
 
 	//return true if you know about a medkit and there is room for it
-	if (pItemsManager->GetNrMedkits() > 0 && pItemsManager->GetSlotForItemType(eItemType::MEDKIT, pInterface) >= 0)
+	if (pItemsManager->GetNrMedkits() > 0 && pItemsManager->GetOpenSlotForItemType(eItemType::MEDKIT) >= 0)
 		return true;
 
 	//return true if you know about a food item and there is room for it
-	if (pItemsManager->GetNrFoods() > 0 && pItemsManager->GetSlotForItemType(eItemType::FOOD, pInterface) >= 0)
+	if (pItemsManager->GetNrFoods() > 0 && pItemsManager->GetOpenSlotForItemType(eItemType::FOOD) >= 0)
 		return true;
 
 	return false;
 
 }
+
+
+
+#pragma endregion Movement
+
+
+#pragma region Rotation
+
+//AUTO ORIENT
+void FaceTargetState::OnEnter(Elite::Blackboard* pBlackboard)
+{
+	cout << "AUTO ORIENT STATE\n";
+}
+
+void FaceTargetState::OnExit(Elite::Blackboard* pBlackboard)
+{
+}
+
+void FaceTargetState::Update(Elite::Blackboard* pBlackboard, float dt)
+{
+	SteeringOutput* pRotation;
+	Face* pFace{ new Face()};
+	Elite::Vector2* pTarget{};
+	IExamInterface* pInterface{};
+
+	pBlackboard->GetData("RotationOutput", pRotation);
+	pBlackboard->GetData("TargetPoint", pTarget);
+	pBlackboard->GetData("Interface", pInterface);
+
+	pFace->SetTargetInfo(TargetInfo(*pTarget, Elite::Vector2()));
+
+	SteeringOutput steering = pFace->CalculateSteering(dt, pInterface->Agent_GetInfo());
+
+	pRotation->AutoOrient = false;
+	pRotation->AngularVelocity = steering.AngularVelocity;
+
+	delete pFace;
+}
+
+//RADAR
+void RadarState::OnEnter(Elite::Blackboard* pBlackboard)
+{
+	cout << "RADAR STATE\n";
+}
+
+void RadarState::OnExit(Elite::Blackboard* pBlackboard)
+{
+}
+
+void RadarState::Update(Elite::Blackboard* pBlackboard, float dt)
+{
+	SteeringOutput* pRotation;
+	Radar* pRadar;
+	IExamInterface* pInterface;
+
+	pBlackboard->GetData("RotationOutput", pRotation);
+	pBlackboard->GetData("RadarBehavior", pRadar);
+	pBlackboard->GetData("Interface", pInterface);
+
+
+	*pRotation = pRadar->CalculateSteering(dt, pInterface->Agent_GetInfo());
+	pRotation->AutoOrient = false;
+}
+
+//AIM
+void AimState::OnEnter(Elite::Blackboard* pBlackboard)
+{
+	cout << "AIM STATE\n";
+}
+
+void AimState::OnExit(Elite::Blackboard* pBlackboard)
+{
+}
+
+void AimState::Update(Elite::Blackboard* pBlackboard, float dt)
+{
+	SteeringOutput* pRotation{};
+	AimZombie* pAim{};
+	IExamInterface* pInterface{};
+	ItemsManager* pItemsManager{};
+	ZombieHordeInfo* pZombieHorde{};
+
+	pBlackboard->GetData("RotationOutput", pRotation);
+	pBlackboard->GetData("AimBehavior", pAim);
+	pBlackboard->GetData("Interface", pInterface);
+	pBlackboard->GetData("ItemsManager", pItemsManager);
+	pBlackboard->GetData("ZombieHorde", pZombieHorde);
+
+
+
+	*pRotation = pAim->CalculateSteering(dt, pInterface->Agent_GetInfo());
+	pRotation->AutoOrient = false;
+
+
+	// PULL THE TRIGGER IF YOU ARE AIMING AT THE CURRENT TARGET
+	Elite::Vector2 v1 = Elite::OrientationToVector(pInterface->Agent_GetInfo().Orientation);
+	Elite::Vector2 v2 = pAim->GetCurrentTarget() - pInterface->Agent_GetInfo().Position;
+
+
+	cout << pInterface->Agent_GetInfo().AgentSize << endl;
+
+	Elite::Vector3 color{ };
+	//current angle
+	float angleToTarget{ abs( Elite::AngleBetween(v1, v2)) };
+	float allowedAngle{ atan(0.9f / v2.Magnitude()) };
+
+	if (angleToTarget < (allowedAngle ))
+	{
+		color = { 0.f, 1.f, 0.f };
+		pItemsManager->UseItem(pItemsManager->GetFirstPistolIndex());
+		cout << "DISTANCE TO TARGET" << v2.Magnitude() << endl;
+
+	}
+	else
+	{
+		color = { 1.f, 0.f, 0.f };
+	}
+
+	
+	//debug aim lines
+	//pInterface->Draw_Direction(pInterface->Agent_GetInfo().Position, v1, v2.Magnitude(), color, 0.f);
+	//pInterface->Draw_Direction(pInterface->Agent_GetInfo().Position, v2, v2.Magnitude(), {0.f, 0.f, 1.f}, 0.f);
+
+
+}
+
+//TRANSITIONS
+bool FaceTargetToRadar::ToTransition(Elite::Blackboard* pBlackboard) const
+{
+	RadarToFaceTarget tempTrans{};
+
+	return !tempTrans.ToTransition(pBlackboard);
+}
+
+bool RadarToFaceTarget::ToTransition(Elite::Blackboard* pBlackboard) const
+{
+	const float threshold{ 16.f };
+	ToLootSeek toLootSeek{};
+	Elite::Vector2* pTarget;
+	IExamInterface* pInterface;
+
+	pBlackboard->GetData("TargetPoint", pTarget);
+	pBlackboard->GetData("Interface", pInterface);
+
+	pInterface->Draw_Circle(pInterface->Agent_GetInfo().Position, threshold, { 1.f, 1.f, 1.f });
+
+	return Elite::Distance(*pTarget, pInterface->Agent_GetInfo().Position) < threshold && toLootSeek.ToTransition(pBlackboard);
+}
+
+bool AimToRadar::ToTransition(Elite::Blackboard* pBlackboard) const
+{
+	ToAim toAimTransition{};
+
+	return !toAimTransition.ToTransition(pBlackboard);
+}
+
+bool ToAim::ToTransition(Elite::Blackboard* pBlackboard) const
+{
+	IExamInterface* pInterface{};
+	ZombieHordeInfo* pZombieHorde{};
+	ItemsManager* pItemsManager{};
+
+	pBlackboard->GetData("Interface", pInterface);
+	pBlackboard->GetData("ZombieHorde", pZombieHorde);
+	pBlackboard->GetData("ItemsManager", pItemsManager);
+
+	return pZombieHorde->GetEnemiesInFov().size() > 0 && pItemsManager->GetTotalAmmo();
+
+	return false;
+}
+
+#pragma endregion Rotation

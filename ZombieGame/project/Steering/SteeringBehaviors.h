@@ -26,6 +26,7 @@ struct SteeringOutput
 	Elite::Vector2 LinearVelocity;
 	float AngularVelocity;
 	bool IsValid;
+	bool AutoOrient;
 };
 
 #pragma region **ISTEERINGBEHAVIOR** (BASE)
@@ -196,9 +197,11 @@ public:
 
 	void SetZombieInfo(ZombieHordeInfo* info) { m_pZombieInfo = info; }
 	SteeringOutput CalculateSteering(float deltaT, const AgentInfo& agentInfo) override;
+	const Elite::Vector2& GetCurrentTarget() const { return m_CurrentTarget; }
 
 private:
 	ZombieHordeInfo* m_pZombieInfo;
+	Elite::Vector2 m_CurrentTarget;
 
 };
 

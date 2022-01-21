@@ -4,7 +4,7 @@
 
 struct EnemyRecord
 {
-	EnemyRecord(const Elite::Vector2& pos = { 0.f, 0.f }, const Elite::Vector2& vel = { 0.f, 0.f }, float life = 4.f)
+	EnemyRecord(const Elite::Vector2& pos = { 0.f, 0.f }, const Elite::Vector2& vel = { 0.f, 0.f }, float life = 0.2f)
 		: Position{ pos }
 		, LinearVelocity{ vel }
 		, lifetime{ life }
@@ -35,7 +35,7 @@ public:
 		for (EnemyRecord& e : m_RecordeEnemyPositions)
 		{
 			e.lifetime -= dt;
-			e.Position += e.LinearVelocity * dt;
+	
 		}
 
 		//remove if lifetime is done

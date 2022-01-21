@@ -80,8 +80,7 @@ SteeringOutput Face::CalculateSteering(float deltaT, const AgentInfo& agentInfo)
 	float currentAngle{ agentInfo.Orientation - float(M_PI) / 2 };
 	Elite::Vector2 forward{ cos(currentAngle), sin(currentAngle) };
 
-	steering.AngularVelocity = Elite::AngleBetween(forward, toTarget) * 2;
-
+	steering.AngularVelocity = Elite::AngleBetween(forward, toTarget) * 20.f;
 	return steering;
 }
 
@@ -226,6 +225,7 @@ SteeringOutput AimZombie::CalculateSteering(float deltaT, const AgentInfo& agent
 	}
 
 	m_TargetInfo.Position = (*it).Location;
+	m_CurrentTarget = (*it).Location;
 	m_TargetInfo.LinearVelocity = (*it).LinearVelocity;
 
 	output = Face::CalculateSteering(deltaT, agentInfo);

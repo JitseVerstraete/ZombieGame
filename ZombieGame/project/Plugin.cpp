@@ -26,11 +26,14 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 	m_pInterface = static_cast<IExamInterface*>(pInterface);
 
 
+	m_pRotationOutput = new SteeringOutput();
+
 	auto world = m_pInterface->World_GetInfo();
 	m_pExplorationGrid =	new ExplorationGrid(world.Center, world.Dimensions.x / 2, world.Dimensions.y / 2, 11, 11);
 	m_pZombieHordeInfo =	new ZombieHordeInfo();
 	m_pKnownHousesInfo =	new KnownHousesInfo();
-	m_pItemsManager =		new ItemsManager();
+	m_pItemsManager =		new ItemsManager(m_pInterface);
+	m_pMovementTarget = new Elite::Vector2(0.f, 0.f);
 	
 
 
@@ -40,12 +43,18 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 
 	//setup blackboard
 	m_pBlackboard = new Elite::Blackboard();
+	m_pBlackboard->AddData("Interface", m_pInterface);
 	m_pBlackboard->AddData("KnownHouses", m_pKnownHousesInfo);
 	m_pBlackboard->AddData("ZombieHorde", m_pZombieHordeInfo);
 	m_pBlackboard->AddData("ExplorationGrid", m_pExplorationGrid);
 	m_pBlackboard->AddData("ItemsManager", m_pItemsManager);
 	m_pBlackboard->AddData("TargetPoint", m_pMovementTarget);
-	m_pBlackboard->AddData("Interface", m_pInterface);
+	m_pBlackboard->AddData("RotationOutput", m_pRotationOutput);
+	m_pBlackboard->AddData("RadarBehavior", m_pRadarBehavior);
+	m_pBlackboard->AddData("AimBehavior", m_pAimBehavior);
+
+
+	//MOVEMENT STATE MACHINE
 
 	//create states
 	Elite::FSMState* pExploreState = new Exploring();
@@ -54,6 +63,7 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 	m_pStates.push_back(pExploreState);
 	m_pStates.push_back(pHouseSeekState);
 	m_pStates.push_back(pLootSeekState);
+
 
 	//create transitions
 	Elite::FSMTransition* pHouseSeekToExploring = new HouseSeekToExploring();
@@ -74,8 +84,40 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 	m_pMovementStateMachine->AddTransition(pLootSeekState, pHouseSeekState, pLootSeekToHouseSeek); //from LOOT SEEK to HOUSE SEEK
 	
 
+
+
+	//ROTATION STATE MACHINE
+
+	//create states
+	Elite::FSMState* pFaceTargetState = new FaceTargetState();
+	Elite::FSMState* pRadarState = new RadarState();
+	Elite::FSMState* pAimState = new AimState();
+	m_pStates.push_back(pFaceTargetState);
+	m_pStates.push_back(pRadarState);
+	m_pStates.push_back(pAimState);
+
+
+	//create transitions
+	Elite::FSMTransition* pFaceTargetToRadar = new FaceTargetToRadar();
+	Elite::FSMTransition* pRadarToFaceTarget = new RadarToFaceTarget();
+	Elite::FSMTransition* pToAim = new ToAim();
+	Elite::FSMTransition* pAimToRadar = new AimToRadar();
+	m_pTransitions.push_back(pFaceTargetToRadar);
+	m_pTransitions.push_back(pRadarToFaceTarget);
+	m_pTransitions.push_back(pToAim);
+	m_pTransitions.push_back(pAimToRadar);
+
+	m_pRotationStateMachine = new Elite::FiniteStateMachine(pRadarState, m_pBlackboard);
+	m_pRotationStateMachine->AddTransition(pRadarState, pFaceTargetState, pRadarToFaceTarget);
+	m_pRotationStateMachine->AddTransition(pFaceTargetState, pRadarState, pFaceTargetToRadar);
+	m_pRotationStateMachine->AddTransition(pFaceTargetState, pAimState, pToAim);
+	m_pRotationStateMachine->AddTransition( pRadarState, pAimState, pToAim);
+	m_pRotationStateMachine->AddTransition( pAimState, pRadarState, pAimToRadar);
+	
+
 	//scan surroundings before the game starts
 	m_pExplorationGrid->FullSurroundingsScan(m_pInterface);
+
 }
 
 
@@ -89,7 +131,7 @@ void Plugin::DllInit()
 	m_pAimBehavior = new AimZombie();
 
 
-	std::vector <BlendedSteering::WeightedBehavior> behaviors{ {BlendedSteering::WeightedBehavior(m_pSeekBehavior, 1), BlendedSteering::WeightedBehavior(m_pZombieEvadeBehavior, 1) } };
+	std::vector <BlendedSteering::WeightedBehavior> behaviors{ {BlendedSteering::WeightedBehavior(m_pSeekBehavior, 10), BlendedSteering::WeightedBehavior(m_pZombieEvadeBehavior, 1) } };
 	m_pEvasiveSeek = new BlendedSteering(behaviors);
 
 }
@@ -131,7 +173,7 @@ void Plugin::InitGameDebugParams(GameDebugParams& params)
 	params.RenderUI = true; //Render the IMGUI Panel? (Default = true)
 
 	//enemies
-	params.SpawnEnemies = false; //Do you want to spawn enemies? (Default = true)
+	params.SpawnEnemies = true; //Do you want to spawn enemies? (Default = true)
 	params.EnemyCount = 20; //How many enemies? (Default = 20)
 
 	//items
@@ -172,7 +214,7 @@ void Plugin::Update(float dt)
 
 	//DEBUG RENDERING
 
-	
+	/*
 	//Debug Print
 	m_DebugPrintTimer += dt;
 	if (m_DebugPrintTimer > m_DebugPrintInterval)
@@ -182,12 +224,18 @@ void Plugin::Update(float dt)
 		std::cout << "---Debug print record---\n" << std::left;
 		std::cout << setw(50) << "Number of houses recorded (unexplored): "  << m_pKnownHousesInfo->GetNrHouses() << " (" << m_pKnownHousesInfo->GetNrUnexploredHouses() << ") " << std::endl;
 		std::cout << setw(50) <<  "Number of items recorded (pistols/medkits/foods): " << m_pItemsManager->GetNrItems() << " (" << m_pItemsManager->GetNrPistols() << "/" << m_pItemsManager->GetNrMedkits() << "/" << m_pItemsManager->GetNrFoods() << ") " << std::endl;
+		
+		cout << "first pistol index? "  << m_pItemsManager->GetFirstPistolIndex(m_pInterface) << endl;
+		cout << "lowest medkit index? " << m_pItemsManager->GetLowestMedkitIndex(m_pInterface) << endl;
+		cout << "lowest energy index? " << m_pItemsManager->GetLowestFoodIndex(m_pInterface) << endl;
+
 		std::cout << std::endl;
 
 	}
-	
+	*/
 	
 
+	
 
 
 
@@ -240,14 +288,12 @@ void Plugin::Update(float dt)
 //This function calculates the new SteeringOutput, called once per frame
 SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 {
-
 	auto steering = SteeringPlugin_Output();
 
 	//GETTING INFO
 	AgentInfo aInfo = m_pInterface->Agent_GetInfo();
 	vector<EntityInfo> entities = GetEntitiesInFOV();
 	vector<HouseInfo> houses = GetHousesInFOV();
-
 
 #pragma region RecordData
 	
@@ -265,7 +311,7 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 
 			break;
 		case eEntityType::ITEM:
-			m_pItemsManager->RecordItem(ent, m_pInterface);
+			m_pItemsManager->RecordItem(ent);
 
 			break;
 		case eEntityType::PURGEZONE:
@@ -289,15 +335,36 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 
 	//update state machine
 	m_pMovementStateMachine->Update(dt);
+	m_pRotationStateMachine->Update(dt);
 
 	//update information structures
 	m_pZombieHordeInfo->Update(dt);
 	m_pExplorationGrid->Update(dt, m_pInterface);
 	m_pKnownHousesInfo->Update(dt, m_pInterface);
-	m_pItemsManager->Update(dt, m_pInterface);
+	m_pItemsManager->Update(dt);
 
 #pragma endregion UpdateStructures
 
+
+#pragma region UseItems
+
+	const int maxHealth{10};
+	int medIndex{ m_pItemsManager->GetLowestMedkitIndex() };
+	if (medIndex >= 0 && aInfo.Health + m_pItemsManager->GetItemValue(medIndex) < maxHealth)
+	{
+		m_pItemsManager->UseItem(medIndex);
+	}
+
+
+	const int maxEnergy{10};
+	int foodIndex{ m_pItemsManager->GetLowestFoodIndex() };
+	if (foodIndex >= 0 && aInfo.Energy + m_pItemsManager->GetItemValue(foodIndex) < maxEnergy)
+	{
+		m_pItemsManager->UseItem(foodIndex);
+	}
+
+
+#pragma endregion UseItems
 
 #pragma region behaviorWeights
 
@@ -328,20 +395,70 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 	//update behaviors
 	m_pZombieEvadeBehavior->SetZombieInfo(m_pZombieHordeInfo);
 	m_pAimBehavior->SetZombieInfo(m_pZombieHordeInfo);
+	
+
+	//m_pSeekBehavior->SetTargetInfo(TargetInfo(m_pInterface->NavMesh_GetClosestPathPoint({ 0.f , 0.f}), Elite::Vector2()));
 	m_pSeekBehavior->SetTargetInfo(TargetInfo(m_pInterface->NavMesh_GetClosestPathPoint(*m_pMovementTarget), Elite::Vector2()));
 
-	SteeringOutput movementOutput = m_pEvasiveSeek->CalculateSteering(dt, aInfo);
 
+	//calculate linear velocity based on target and nearby enemies
+	SteeringOutput movementOutput = m_pEvasiveSeek->CalculateSteering(dt, aInfo);
 	steering.LinearVelocity = movementOutput.LinearVelocity;
 	steering.LinearVelocity.Normalize();
 	steering.LinearVelocity *= aInfo.MaxLinearSpeed;
 
-	steering.AngularVelocity = m_pRadarBehavior->CalculateSteering(dt, aInfo).AngularVelocity;
-	//steering.AngularVelocity = m_pAimBehavior->CalculateSteering(dt, aInfo).AngularVelocity;
+	//set the angular velocity and auto orient calculated by the rotation state machine
+	steering.AngularVelocity = m_pRotationOutput->AngularVelocity;
+	steering.AutoOrient = m_pRotationOutput->AutoOrient;
 
 
-	//comment this line if you want to test rotation behavior
-	steering.AutoOrient = true;
+	
+	Elite::Vector2 dirTarget{ *m_pMovementTarget - aInfo.Position };
+	m_pInterface->Draw_Direction(aInfo.Position, dirTarget, dirTarget.Magnitude(), { 1.f, 1.f, 1.f }, 0.f);
+
+
+
+
+
+
+
+
+
+
+	//draw exploration grid
+	for (const auto& cell : m_pExplorationGrid->GetCells())
+	{
+
+		switch (cell.state)
+		{
+		case CellState::UNKNOWN:
+			m_pInterface->Draw_SolidPolygon(cell.GetRectPoints().data(), 4, { 0.5f, 0.5f, 1.f }, 0.1f);
+			break;
+		case CellState::HOUSE:
+			m_pInterface->Draw_SolidPolygon(cell.GetRectPoints().data(), 4, { 0.5f, 1.f, 0.5f }, 0.1f);
+			break;
+		case CellState::NOHOUSE:
+			m_pInterface->Draw_SolidPolygon(cell.GetRectPoints().data(), 4, { 1.f, 0.5f, 0.5f }, 0.1f);
+			break;
+		default:
+			break;
+		}
+
+
+		m_pInterface->Draw_Polygon(cell.GetRectPoints().data(), 4, { 1.f, 1.f, 1.f }, 0.2f);
+	}
+
+
+
+
+
+
+
+
+
+
+
+
 
 	return steering;
 }

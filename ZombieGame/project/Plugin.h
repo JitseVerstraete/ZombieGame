@@ -42,13 +42,11 @@ private:
 	//blackboard
 	Elite::Blackboard* m_pBlackboard = nullptr;
 	
-	//state machine
+	//state machines
 	std::vector<Elite::FSMState*> m_pStates;
 	std::vector<Elite::FSMTransition*> m_pTransitions;
 	Elite::FiniteStateMachine* m_pMovementStateMachine = nullptr;
-	//todo: add rotation state machine (radar/aiming)
-
-	//behavior tree
+	Elite::FiniteStateMachine* m_pRotationStateMachine = nullptr;
 
 
 	//behaviors
@@ -59,7 +57,7 @@ private:
 	Radar* m_pRadarBehavior = nullptr;
 	AimZombie* m_pAimBehavior = nullptr;
 
-
+	SteeringOutput* m_pRotationOutput = nullptr;
 
 	//information
 	ItemsManager*		m_pItemsManager = nullptr;

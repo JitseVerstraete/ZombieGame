@@ -1,7 +1,12 @@
 #include "stdafx.h"
 #include "ItemsManager.h"
 
-void ItemsManager::Update(float dt, IExamInterface* pInterface)
+ItemsManager::ItemsManager(IExamInterface* pInterface)
+	:m_pInterface{ pInterface }
+{
+}
+
+void ItemsManager::Update(float dt)
 {
 	//try to grab all items currently in fov
 
@@ -21,7 +26,7 @@ void ItemsManager::Update(float dt, IExamInterface* pInterface)
 			pInterface->Inventory_AddItem(0, grabbedItem);
 
 
-			switch (grabbedItem.Type) 
+			switch (grabbedItem.Type)
 			{
 			case eItemType::PISTOL:
 				m_PistolPositions.erase(grabbedItem.Location);
@@ -37,24 +42,24 @@ void ItemsManager::Update(float dt, IExamInterface* pInterface)
 			}
 		}
 		*/
-		
+
 
 		int slot{ -1 };
 		ItemInfo tempItem{};
 
 
-		
-		pInterface->Item_GetInfo(i, tempItem);
+
+		m_pInterface->Item_GetInfo(i, tempItem);
 		switch (tempItem.Type)
 		{
 
 		case eItemType::PISTOL:
-			slot = GetSlotForItemType(eItemType::PISTOL, pInterface);
+			slot = GetOpenSlotForItemType(eItemType::PISTOL);
 			if (slot >= 0)
 			{
-				if (pInterface->Item_Grab(i, tempItem))
+				if (m_pInterface->Item_Grab(i, tempItem))
 				{
-					pInterface->Inventory_AddItem(slot, tempItem);
+					m_pInterface->Inventory_AddItem(slot, tempItem);
 					m_PistolPositions.erase(tempItem.Location);
 				}
 			}
@@ -62,12 +67,12 @@ void ItemsManager::Update(float dt, IExamInterface* pInterface)
 
 
 		case eItemType::MEDKIT:
-			slot = GetSlotForItemType(eItemType::MEDKIT, pInterface);
+			slot = GetOpenSlotForItemType(eItemType::MEDKIT);
 			if (slot >= 0)
 			{
-				if (pInterface->Item_Grab(i, tempItem))
+				if (m_pInterface->Item_Grab(i, tempItem))
 				{
-					pInterface->Inventory_AddItem(slot, tempItem);
+					m_pInterface->Inventory_AddItem(slot, tempItem);
 					m_MedkitPositions.erase(tempItem.Location);
 				}
 			}
@@ -75,12 +80,12 @@ void ItemsManager::Update(float dt, IExamInterface* pInterface)
 
 
 		case eItemType::FOOD:
-			slot = GetSlotForItemType(eItemType::FOOD, pInterface);
+			slot = GetOpenSlotForItemType(eItemType::FOOD);
 			if (slot >= 0)
 			{
-				if (pInterface->Item_Grab(i, tempItem))
+				if (m_pInterface->Item_Grab(i, tempItem))
 				{
-					pInterface->Inventory_AddItem(slot, tempItem);
+					m_pInterface->Inventory_AddItem(slot, tempItem);
 					m_FoodPositions.erase(tempItem.Location);
 				}
 			}
@@ -90,35 +95,78 @@ void ItemsManager::Update(float dt, IExamInterface* pInterface)
 		default:
 			break;
 		}
-		
+
 	}
-
-
 
 	//clear entities in fov
 	m_EntitiesInFov.resize(0);
 
 
+	//remove empty items
+	ItemInfo tempItem{};
+	for (int i{}; i < 5; ++i)
+	{
+		if (m_pInterface->Inventory_GetItem(i, tempItem))
+		{
+			switch (tempItem.Type)
+			{
+
+			case eItemType::PISTOL:
+				if (m_pInterface->Weapon_GetAmmo(tempItem) <= 0)
+				{
+					m_pInterface->Inventory_RemoveItem(i);
+					//cout << "TOSSED EMPTY WEAPON\n";
+				}
+				break;
+
+
+			case eItemType::MEDKIT:
+				if (m_pInterface->Medkit_GetHealth(tempItem) <= 0)
+				{
+					m_pInterface->Inventory_RemoveItem(i);
+					//cout << "TOSSED EMPTY MEDKIT\n";
+				}
+				break;
+
+
+			case eItemType::FOOD:
+				if (m_pInterface->Food_GetEnergy(tempItem) <= 0)
+				{
+					m_pInterface->Inventory_RemoveItem(i);
+					//cout << "TOSSED EMPTY FOOD\n";
+				}
+				break;
+
+			default:
+				break;
+			}
+		}
+
+	}
+
+
+
+	//draw the items on screen
 	for (const auto& p : m_PistolPositions)
 	{
-		pInterface->Draw_Point(p, 5, { 1.f, 0.f, 0.f }, 0.f);
+		m_pInterface->Draw_Point(p, 5, { 1.f, 0.f, 0.f }, 0.f);
 	}
 
 	for (const auto& m : m_MedkitPositions)
 	{
-		pInterface->Draw_Point(m, 5, { 0.f, 1.f, 0.f }, 0.f);
+		m_pInterface->Draw_Point(m, 5, { 0.f, 1.f, 0.f }, 0.f);
 	}
 
 	for (const auto& p : m_FoodPositions)
 	{
-		pInterface->Draw_Point(p, 5, { 0.f, 0.f, 1.f }, 0.f);
+		m_pInterface->Draw_Point(p, 5, { 0.f, 0.f, 1.f }, 0.f);
 	}
 }
 
-void ItemsManager::RecordItem(EntityInfo ent, IExamInterface* pInterface)
+void ItemsManager::RecordItem(EntityInfo ent)
 {
 	ItemInfo tempItem{};
-	pInterface->Item_GetInfo(ent, tempItem);
+	m_pInterface->Item_GetInfo(ent, tempItem);
 
 
 	if (ent.Location != tempItem.Location)
@@ -131,23 +179,23 @@ void ItemsManager::RecordItem(EntityInfo ent, IExamInterface* pInterface)
 	{
 	case eItemType::PISTOL:
 		it = m_PistolPositions.insert(ent.Location);
-		if (it.second)
-			std::cout << "PISTOL FOUND!\n";
+		//if (it.second)
+		//	std::cout << "PISTOL FOUND!\n";
 
 
 		break;
 
 	case eItemType::MEDKIT:
 		it = m_MedkitPositions.insert(ent.Location);
-		if (it.second)
-			std::cout << "MEDKIT FOUND!\n";
+		//if (it.second)
+		//	std::cout << "MEDKIT FOUND!\n";
 
 		break;
 
 	case eItemType::FOOD:
 		it = m_FoodPositions.insert(ent.Location);
-		if (it.second)
-			std::cout << "FOOD FOUND!\n";
+		//if (it.second)
+		//	std::cout << "FOOD FOUND!\n";
 
 		break;
 
@@ -166,7 +214,134 @@ void ItemsManager::RecordItem(EntityInfo ent, IExamInterface* pInterface)
 
 }
 
-int ItemsManager::GetSlotForItemType(eItemType type, IExamInterface* pInterface) const
+
+
+int ItemsManager::HasItemOfType(eItemType type)
+{
+	ItemInfo tempItem{};
+	for (int i{}; i < 5; i++)
+	{
+		if (m_pInterface->Inventory_GetItem(i, tempItem))
+		{
+			if (type == tempItem.Type)
+			{
+				return i;
+			}
+		}
+	}
+
+
+	return false;
+}
+
+int ItemsManager::GetFirstPistolIndex()
+{
+	ItemInfo tempItem{};
+	for (int i{}; i < 5; i++)
+	{
+		if (m_pInterface->Inventory_GetItem(i, tempItem))
+		{
+			if (tempItem.Type == eItemType::PISTOL)
+			{
+				return i;
+			}
+		}
+	}
+
+	return -1;
+}
+
+int ItemsManager::GetLowestMedkitIndex()
+{
+	int toReturn{ -1 };
+	int healAmount{ INT_MAX };
+	ItemInfo tempItem{};
+
+	for (int i{}; i < 5; i++)
+	{
+		if (m_pInterface->Inventory_GetItem(i, tempItem))
+		{
+			if (tempItem.Type == eItemType::MEDKIT && m_pInterface->Medkit_GetHealth(tempItem) < healAmount)
+			{
+				toReturn = i;
+				healAmount = m_pInterface->Medkit_GetHealth(tempItem);
+			}
+		}
+	}
+	return toReturn;
+}
+
+int ItemsManager::GetLowestFoodIndex()
+{
+	int toReturn{ -1 };
+	int energyAmount{ INT_MAX };
+	ItemInfo tempItem{};
+
+	for (int i{}; i < 5; i++)
+	{
+		if (m_pInterface->Inventory_GetItem(i, tempItem))
+		{
+			if (tempItem.Type == eItemType::FOOD && m_pInterface->Food_GetEnergy(tempItem) < energyAmount)
+			{
+				toReturn = i;
+				energyAmount = m_pInterface->Food_GetEnergy(tempItem);
+			}
+		}
+	}
+	return toReturn;
+}
+
+int ItemsManager::GetItemValue(int index)
+{
+	ItemInfo temp{};
+	if (m_pInterface->Inventory_GetItem(index, temp))
+	{
+		switch (temp.Type)
+		{
+		case eItemType::PISTOL:
+			return m_pInterface->Weapon_GetAmmo(temp);
+			break;
+		case eItemType::MEDKIT:
+			return m_pInterface->Medkit_GetHealth(temp);
+			break;
+		case eItemType::FOOD:
+			return m_pInterface->Food_GetEnergy(temp);
+			break;
+
+		default:
+			break;
+		}
+	}
+
+	return -1;
+}
+
+int ItemsManager::GetTotalAmmo()
+{
+	int totalAmmo{};
+	ItemInfo tempItem{};
+	for (int i{}; i < 5; ++i)
+	{
+		//check if current slot is reserved for the asked type
+		if (m_pInterface->Inventory_GetItem(i, tempItem))
+		{
+			if (tempItem.Type == eItemType::PISTOL)
+			{
+				totalAmmo += m_pInterface->Weapon_GetAmmo(tempItem);
+			}
+
+		}
+	}
+
+	return totalAmmo;
+}
+
+void ItemsManager::UseItem(int index)
+{
+	m_pInterface->Inventory_UseItem(index);
+}
+
+int ItemsManager::GetOpenSlotForItemType(eItemType type) const
 {
 	ItemInfo tempItem{};
 	for (int i{}; i < m_InventoryLayout.size(); ++i)
@@ -176,7 +351,7 @@ int ItemsManager::GetSlotForItemType(eItemType type, IExamInterface* pInterface)
 			continue;
 
 		//check if there is no item allready in this slot
-		if (pInterface->Inventory_GetItem(i, tempItem))
+		if (m_pInterface->Inventory_GetItem(i, tempItem))
 			continue;
 
 		return i;
@@ -277,6 +452,6 @@ bool ItemsManager::GetClosestKnownItemPosOfType(eItemType type, const Elite::Vec
 		break;
 	}
 
-	
+
 
 }

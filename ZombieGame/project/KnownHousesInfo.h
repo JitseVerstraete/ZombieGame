@@ -5,12 +5,14 @@
 
 #undef min
 
-inline bool operator<(const HouseInfo& h1, const HouseInfo& h2){ return (h1.Center.x < h2.Center.x || h1.Center.y < h2.Center.y); }
+inline bool operator<(const HouseInfo& h1, const HouseInfo& h2) { return (h1.Center.x < h2.Center.x || h1.Center.y < h2.Center.y); }
 
 struct HouseRecord
 {
 	HouseInfo houseInfo;
 	bool explored = false;
+	const float maxScanTimer = 3.f;
+	float scanTimer = maxScanTimer;
 
 	bool operator<(const HouseInfo& rhs)
 	{
