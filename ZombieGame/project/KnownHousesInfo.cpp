@@ -11,6 +11,7 @@ void KnownHousesInfo::Update(float dt, IExamInterface* pInterface)
 
 	for (HouseRecord& h : m_KnownHouses)
 	{
+		/*
 		if (Elite::Distance(aInfo.Position, h.houseInfo.Center) < std::min(h.houseInfo.Size.x, h.houseInfo.Size.y) / 8)
 		{
 			h.scanTimer -= dt;
@@ -23,7 +24,12 @@ void KnownHousesInfo::Update(float dt, IExamInterface* pInterface)
 
 		if (h.scanTimer < 0)
 			h.explored = true;
+		*/
 
+		if (Elite::Distance(aInfo.Position, h.houseInfo.Center) < std::min(h.houseInfo.Size.x, h.houseInfo.Size.y) / 8)
+		{
+			h.explored = true;
+		}
 
 
 		//debug draw

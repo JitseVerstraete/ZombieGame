@@ -162,23 +162,69 @@ bool ToLootSeek::ToTransition(Elite::Blackboard* pBlackboard) const
 {
 	ItemsManager* pItemsManager{};
 	IExamInterface* pInterface{};
+	KnownHousesInfo* pKnownHouses;
+	ExplorationGrid* pExplorationGrid;
+
 	pBlackboard->GetData("ItemsManager", pItemsManager);
 	pBlackboard->GetData("Interface", pInterface);
+	pBlackboard->GetData("KnownHouses", pKnownHouses);
+	pBlackboard->GetData("ExplorationGrid", pExplorationGrid);
 
-	//return true if you know about a pistol and there is room for it 
+	//dont transition if there is a known house at least half the distance away
+	AgentInfo aInfo{ pInterface->Agent_GetInfo() };
+	
+
+	bool itemFound{ false };
+	float closestItemDistance{FLT_MAX};
+	Elite::Vector2 tempItemPos{};
+
 	if (pItemsManager->GetNrPistols() > 0 && pItemsManager->GetOpenSlotForItemType(eItemType::PISTOL) >= 0)
-		return true;
+	{
+		itemFound = true;
+		pItemsManager->GetClosestKnownItemPosOfType(eItemType::PISTOL, aInfo.Position, tempItemPos);
 
-	//return true if you know about a medkit and there is room for it
+		if (!itemFound || Elite::Distance(tempItemPos, aInfo.Position) < closestItemDistance)
+			closestItemDistance = Elite::Distance(tempItemPos, aInfo.Position);
+	}
+
 	if (pItemsManager->GetNrMedkits() > 0 && pItemsManager->GetOpenSlotForItemType(eItemType::MEDKIT) >= 0)
-		return true;
+	{
+		itemFound = true;
+		pItemsManager->GetClosestKnownItemPosOfType(eItemType::MEDKIT, aInfo.Position, tempItemPos);
 
-	//return true if you know about a food item and there is room for it
+		if (!itemFound || Elite::Distance(tempItemPos, aInfo.Position) < closestItemDistance)
+			closestItemDistance = Elite::Distance(tempItemPos, aInfo.Position);
+	}
+
 	if (pItemsManager->GetNrFoods() > 0 && pItemsManager->GetOpenSlotForItemType(eItemType::FOOD) >= 0)
-		return true;
+	{
+		itemFound = true;
+		pItemsManager->GetClosestKnownItemPosOfType(eItemType::FOOD, aInfo.Position, tempItemPos);
+
+		if (!itemFound || Elite::Distance(tempItemPos, aInfo.Position) < closestItemDistance)
+			closestItemDistance = Elite::Distance(tempItemPos, aInfo.Position);
+	}
+
+
+	std::cout << "distance to item: " << closestItemDistance
+		<< "\nhouse distance " << Elite::Distance(aInfo.Position, pKnownHouses->GetClosestUnexploredHouse(aInfo.Position).Center)
+		<< "\ncell distance " << Elite::Distance(aInfo.Position, pExplorationGrid->GetClosestHouseCell(aInfo.Position).GetCellCenter()) << endl << endl;
+
+	if (Elite::Distance(aInfo.Position, pKnownHouses->GetClosestUnexploredHouse(aInfo.Position).Center) < closestItemDistance / 2)
+		return false;
+
+	if (Elite::Distance(aInfo.Position, pExplorationGrid->GetClosestHouseCell(aInfo.Position).GetCellCenter()) < closestItemDistance / 3)
+		return false;
+	
+
+
+
+
+	return itemFound;
+
+
 
 	return false;
-
 }
 
 
@@ -279,8 +325,6 @@ void AimState::Update(Elite::Blackboard* pBlackboard, float dt)
 	Elite::Vector2 v2 = pAim->GetCurrentTarget() - pInterface->Agent_GetInfo().Position;
 
 
-	cout << pInterface->Agent_GetInfo().AgentSize << endl;
-
 	Elite::Vector3 color{ };
 	//current angle
 	float angleToTarget{ abs( Elite::AngleBetween(v1, v2)) };
@@ -321,10 +365,10 @@ bool RadarToFaceTarget::ToTransition(Elite::Blackboard* pBlackboard) const
 	Elite::Vector2* pTarget;
 	IExamInterface* pInterface;
 
-	pBlackboard->GetData("TargetPoint", pTarget);
-	pBlackboard->GetData("Interface", pInterface);
 
-	pInterface->Draw_Circle(pInterface->Agent_GetInfo().Position, threshold, { 1.f, 1.f, 1.f });
+	pBlackboard->GetData("TargetPoint", pTarget);
+	pBlackboard->GetData("Interface", pInterface);	
+
 
 	return Elite::Distance(*pTarget, pInterface->Agent_GetInfo().Position) < threshold && toLootSeek.ToTransition(pBlackboard);
 }
