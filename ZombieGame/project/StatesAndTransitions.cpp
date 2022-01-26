@@ -330,24 +330,16 @@ void AimState::Update(Elite::Blackboard* pBlackboard, float dt)
 	float angleToTarget{ abs( Elite::AngleBetween(v1, v2)) };
 	float allowedAngle{ atan(0.9f / v2.Magnitude()) };
 
-	if (angleToTarget < (allowedAngle ))
+
+	if (angleToTarget < (allowedAngle ) && Elite::Distance(pInterface->Agent_GetInfo().Position, pAim->GetCurrentTarget()) < 9.f)
 	{
 		color = { 0.f, 1.f, 0.f };
 		pItemsManager->UseItem(pItemsManager->GetFirstPistolIndex());
-		cout << "DISTANCE TO TARGET" << v2.Magnitude() << endl;
-
 	}
 	else
 	{
 		color = { 1.f, 0.f, 0.f };
 	}
-
-	
-	//debug aim lines
-	//pInterface->Draw_Direction(pInterface->Agent_GetInfo().Position, v1, v2.Magnitude(), color, 0.f);
-	//pInterface->Draw_Direction(pInterface->Agent_GetInfo().Position, v2, v2.Magnitude(), {0.f, 0.f, 1.f}, 0.f);
-
-
 }
 
 //TRANSITIONS

@@ -53,7 +53,7 @@ private:
 
 	IExamInterface* m_pInterface;
 
-	const std::vector<eItemType> m_InventoryLayout = { eItemType::PISTOL,eItemType::PISTOL, eItemType::MEDKIT, eItemType::MEDKIT, eItemType::FOOD };
+	const std::vector<eItemType> m_InventoryLayout = { eItemType::PISTOL,eItemType::PISTOL, eItemType::PISTOL, eItemType::MEDKIT, eItemType::FOOD };
 
 };
 

@@ -65,6 +65,9 @@ private:
 	ZombieHordeInfo*	m_pZombieHordeInfo = nullptr;
 	ExplorationGrid*	m_pExplorationGrid = nullptr;
 
+
+	PurgeZoneInfo m_PurgeZoneInfo;
+	bool m_PurgeZoneExists = false;
 	
 
 	//constant values

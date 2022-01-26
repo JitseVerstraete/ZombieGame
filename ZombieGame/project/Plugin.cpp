@@ -192,7 +192,7 @@ void Plugin::InitGameDebugParams(GameDebugParams& params)
 
 	//dificulty
 	params.StartingDifficultyStage = 0;
-	params.SpawnPurgeZonesOnMiddleClick = false;
+	params.SpawnPurgeZonesOnMiddleClick = true;
 
 }
 
@@ -295,11 +295,13 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 	vector<EntityInfo> entities = GetEntitiesInFOV();
 	vector<HouseInfo> houses = GetHousesInFOV();
 
+
 #pragma region RecordData
 	
 	//record entities in fov
 	EnemyInfo tempEnemy{};
 	ItemInfo tempItem{};
+	m_PurgeZoneExists = false;
 	//record entities
 	for (const auto& ent : entities)
 	{
@@ -315,6 +317,7 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 
 			break;
 		case eEntityType::PURGEZONE:
+			m_PurgeZoneExists = m_pInterface->PurgeZone_GetInfo(ent, m_PurgeZoneInfo);
 			break;
 		default:
 			break;
@@ -398,6 +401,11 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 	
 
 	//m_pSeekBehavior->SetTargetInfo(TargetInfo(m_pInterface->NavMesh_GetClosestPathPoint({ 0.f , 0.f}), Elite::Vector2()));
+	if (m_PurgeZoneExists && Elite::Distance(aInfo.Position, m_PurgeZoneInfo.Center) < (m_PurgeZoneInfo.Radius + 3.f))
+	{
+		*m_pMovementTarget = aInfo.Position + Elite::Vector2(aInfo.Position - m_PurgeZoneInfo.Center).GetNormalized();
+	}
+
 	m_pSeekBehavior->SetTargetInfo(TargetInfo(m_pInterface->NavMesh_GetClosestPathPoint(*m_pMovementTarget), Elite::Vector2()));
 
 
